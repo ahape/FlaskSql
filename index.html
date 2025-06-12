@@ -1,0 +1,65 @@
+<!--
+  vim: ts=2 sw=2
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cross-Data Builder</title>
+  <link href="styles.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="container">
+    <h1>Cross-Data Builder</h1>
+    
+    <div class="main-content">
+      <div class="list-section">
+        <div class="section-header">
+          <div class="section-title">Available Fields</div>
+          <select class="data-source-dropdown" id="dataSourceSelect"></select>
+        </div>
+        <div class="field-list" id="availableList"></div>
+      </div>
+      
+      <div class="list-section">
+        <div class="section-header">
+          <div class="section-title">Report Fields</div>
+        </div>
+        <div class="field-list" id="configuredList">
+          <div class="empty-state">Drag fields here to configure your query</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="joins-section">
+      <div class="joins-title">Relationships</div>
+      <div id="joinsList">
+        <div class="empty-state">Click "Link" on configured fields to create joins</div>
+      </div>
+    </div>
+
+    <!-- Link Modal -->
+    <div class="modal-overlay" id="linkModal">
+      <div class="modal">
+        <div class="modal-header">
+          <div class="modal-title">Create Join</div>
+          <button class="modal-close" onclick="closeLinkModal()">×</button>
+        </div>
+        
+        <div class="source-field-info" id="sourceFieldInfo">
+          <div class="source-field-name" id="sourceFieldName"></div>
+          <div class="source-field-details" id="sourceFieldDetails"></div>
+        </div>
+        
+        <div>
+          <h3 style="margin-bottom: 15px; color: #333;">Select field to join with:</h3>
+          <div class="target-fields-list" id="targetFieldsList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
