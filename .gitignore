@@ -1,3 +1,6 @@
+# auto-generated
+index.html
+!templates/index.html
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

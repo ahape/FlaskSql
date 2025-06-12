@@ -1,9 +1,13 @@
+const widgetWrapper = document.getElementById("widget-wrapper");
+const widget = new Widget();
+
+widget.appendTo(widgetWrapper);
+
 document.getElementById("queryForm").addEventListener("submit", onSubmit);
 
 async function onSubmit(e) {
   e.preventDefault();
 
-  const table = document.getElementById("table").value;
   const query = document.getElementById("query").value.trim();
   const resultsDiv = document.getElementById("results");
   const executeBtn = document.getElementById("executeBtn");
@@ -19,7 +23,7 @@ async function onSubmit(e) {
   resultsDiv.innerHTML = `<div class="loading">Executing query...</div>`;
 
   try {
-    const result = await executeQuery(/*table,*/query);
+    const result = await executeQuery(query);
     resultsDiv.innerHTML = renderTable(result);
   } catch (error) {
     resultsDiv.innerHTML = `<div class="error">Network error: ${escapeHtml(error.message)}</div>`;
@@ -68,7 +72,7 @@ async function executeQuery(query) {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ table, query })
+    body: JSON.stringify({ query })
   });
   return await response.json();
 }

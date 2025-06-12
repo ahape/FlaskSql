@@ -5,29 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SQL Query Interface</title>
   <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet" />
+  <script src="{{ url_for('static', filename='widget.js') }}"></script>
 </head>
 <body>
   <div class="container">
     <h1>SQL Query Interface</h1>
-    
+
     <form id="queryForm">
-      <div class="form-group">
-        <label for="table">Select Data Source:</label>
-        <select id="table" name="table" required>
-          {% for table in tables %}
-          <option value="{{ table }}">{{ table }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      
+      <div class="form-group" id="widget-wrapper"></div>
+
       <div class="form-group">
         <label for="query">SQL Query:</label>
         <textarea id="query" name="query" placeholder="Enter your SQL query here..." required></textarea>
       </div>
-      
+
       <button type="submit" id="executeBtn">Execute Query</button>
     </form>
-    
+
     <div id="results" class="results"></div>
   </div>
   <script src="{{ url_for('static', filename='app.js') }}"></script>
