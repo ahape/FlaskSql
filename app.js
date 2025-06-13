@@ -35,6 +35,23 @@ const tableLabels = {
 }
 const tableNames = Object.keys(tableSchemas);
 
+sqlConnection.then(db => {
+  db.run(`CREATE TABLE zendesk_tickets (
+    date datetime,
+    customer text,
+    assignee text,
+    organization text,
+    avg_resolution_time int,
+    avg_nps_score int
+  );`);
+  db.run("INSERT INTO zendesk_tickets VALUES (?, ?, ?, ?, ?, ?)",
+    ["2025-06-13", "Alice", "George", "Telecom", 10, 10]);
+  db.run("INSERT INTO zendesk_tickets VALUES (?, ?, ?, ?, ?, ?)",
+    ["2025-06-14", "Brett", "George", "Telecom", 3, 9]);
+  const result = db.exec("SELECT * FROM zendesk_tickets");
+  console.log(result);
+});
+
 let configuredFields = [];
 let joins = [];
 let draggedElement = null;
@@ -226,15 +243,31 @@ function updateConfiguredList() {
     configuredList.appendChild(fieldElement);
   });
   stylizeJoinedElements();
+  runReport();
 }
 
 function runReport() {
   const fields = configuredFields.slice();
-  const joins2 = joins.slice();
-  const query = "SELECT";
+  if (fields.length === 0) return;
+  const primaryTable = fields[0].table;
+  const queryFields = [];
   fields.forEach(f => {
-    query += ""
+    const prefix = f.table === primaryTable ? "" : `${f.table}.`;
+    queryFields.push(prefix + f.field);
   });
+  let query = "SELECT ";
+  query += queryFields.join(", ");
+  query += ` FROM ${primaryTable}`;
+  joins.forEach(j => {
+    const left = j.leftTable !== primaryTable ?
+      { table: j.leftTable, field: j.leftField } :
+      { table: j.rightTable, field: j.rightField };
+    const right = j.leftTable !== left.table ?
+      { table: j.leftTable, field: j.leftField } :
+      { table: j.rightTable, field: j.rightField };
+    query += `\nJOIN ${left.table} ON ${left.table}.${left.field} = ${right.table}.${right.field}`;
+  });
+  console.log(query);
 }
 
 // Create a join between fields
@@ -357,6 +390,7 @@ function executeJoin(leftField, leftTable, rightField, rightTable) {
   
   joins.push(join);
   stylizeJoinedElements();
+  runReport();
 }
 
 function stylizeJoinedElements() {

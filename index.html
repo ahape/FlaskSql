@@ -8,6 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Cross-Data Builder</title>
   <link href="styles.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 </head>
 <body>
   <div class="container">
@@ -57,7 +58,11 @@
       </div>
     </div>
   </div>
-
+  <script>
+    sqlConnection = initSqlJs({
+      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+    }).then(SQL => new SQL.Database());
+  </script>
   <script src="app.js"></script>
 </body>
 </html>
