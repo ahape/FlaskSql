@@ -8,22 +8,23 @@ const T4 = "Group";
 const T5 = "Metric";
 const tableSchemas = {
   "Zendesk Tickets": [
+    { name: "date", type: T1 },
     { name: "customer", type: T3 },
     { name: "assignee", type: T3 },
     { name: "organization", type: T4 },
-    { name: "date", type: T1 },
-    { name: "avg_resolution_time", type: T5 }
+    { name: "avg_resolution_time", type: T5 },
+    { name: "avg_nps_score", type: T5 },
   ],
   "Conversation Data": [
+    { name: "datetime", type: T1 },
     { name: "agent", type: T3 },
     { name: "queue", type: T4 },
-    { name: "datetime", type: T1 },
     { name: "avg_handle_time", type: T5 }
   ],
   "Queue Data": [
+    { name: "datetime", type: T1 },
     { name: "next_party", type: T3 },
     { name: "queue", type: T4 },
-    { name: "datetime", type: T1 },
     { name: "avg_wait_time", type: T5 }
   ],
 };
@@ -188,7 +189,12 @@ function addToConfigured(fieldName, tableName, fieldType) {
 
 // Remove field from configured list
 function removeFromConfigured(fieldName, tableName) {
-  configuredFields = configuredFields.filter(f => !(f.field === fieldName && f.table === tableName));
+  const toRemove = configuredFields.find(f => f.field === fieldName && f.table === tableName);
+  configuredFields.splice(configuredFields.indexOf(toRemove), 1);
+  const existingJoin = joins.find(j => joinIncludesField(j, fieldName, tableName));
+  if (existingJoin) {
+    removeJoin(existingJoin.key);
+  }
   updateConfiguredList();
 }
 
@@ -233,7 +239,9 @@ function getAvailableJoinTargets(sourceField, sourceTableName) {
   
   // Get all fields from all other data sources (tables)
   tableNames.forEach(tableName => {
-    if (tableName !== sourceTableName) {
+    if (tableName !== sourceTableName &&
+        configuredFields.some(f => f.table === tableName))
+    {
       tableSchemas[tableName].forEach(field => {
         targets.push({
           field: field.name,
@@ -331,38 +339,7 @@ function executeJoin(leftField, leftTable, rightField, rightTable) {
   };
   
   joins.push(join);
-  updateJoinsList();
-}
-
-// Update the joins display
-function updateJoinsList() {
-  const joinsList = document.getElementById("joinsList");
-  
-  if (joins.length === 0) {
-    joinsList.innerHTML = `<div class="empty-state">Click "Link" on configured fields to create joins</div>`;
-    return;
-  }
-  
   stylizeJoinedElements();
-
-  joinsList.innerHTML = "";
-  joins.forEach(join => {
-    const joinDiv = document.createElement("div");
-    joinDiv.className = "join-item";
-    
-    const joinInfo = document.createElement("div");
-    joinInfo.className = "join-info";
-    joinInfo.textContent = `${join.leftTable}.${join.leftField} = ${join.rightTable}.${join.rightField}`;
-    
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "remove-btn";
-    removeBtn.innerHTML = "×";
-    removeBtn.onclick = () => removeJoin(join.key);
-    
-    joinDiv.appendChild(joinInfo);
-    joinDiv.appendChild(removeBtn);
-    joinsList.appendChild(joinDiv);
-  });
 }
 
 function stylizeJoinedElements() {
@@ -374,10 +351,7 @@ function stylizeJoinedElements() {
   });
   joins.forEach(join => {
     const field = configuredData.find(d =>
-      (d.field.field === join.leftField &&
-       d.field.table === join.leftTable) ||
-      (d.field.field === join.rightField &&
-       d.field.table === join.rightTable));
+      joinIncludesField(join, d.field.field, d.field.table));
     if (field) {
       field.element.classList.add("join-item");
       field.element.querySelector(".field-name").textContent = `${join.leftTable}.${join.leftField} = ${join.rightTable}.${join.rightField}`;
@@ -385,10 +359,14 @@ function stylizeJoinedElements() {
   });
 }
 
+function joinIncludesField(join, fieldName, tableName) {
+  return (join.leftField === fieldName && join.leftTable === tableName) ||
+         (join.rightField === fieldName && join.rightTable === tableName);
+}
+
 // Remove a join
 function removeJoin(joinKey) {
   joins = joins.filter(j => j.key !== joinKey);
-  updateJoinsList();
 }
 
 // Initialize the app when the page loads
