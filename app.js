@@ -7,7 +7,7 @@ const T3 = "Subject";
 const T4 = "Group";
 const T5 = "Metric";
 const tableSchemas = {
-  "Zendesk Tickets": [
+  zendesk_tickets: [
     { name: "date", type: T1 },
     { name: "customer", type: T3 },
     { name: "assignee", type: T3 },
@@ -15,19 +15,24 @@ const tableSchemas = {
     { name: "avg_resolution_time", type: T5 },
     { name: "avg_nps_score", type: T5 },
   ],
-  "Conversation Data": [
+  conversation_data: [
     { name: "datetime", type: T1 },
     { name: "agent", type: T3 },
     { name: "queue", type: T4 },
     { name: "avg_handle_time", type: T5 }
   ],
-  "Queue Data": [
+  queue_data: [
     { name: "datetime", type: T1 },
     { name: "next_party", type: T3 },
     { name: "queue", type: T4 },
     { name: "avg_wait_time", type: T5 }
   ],
 };
+const tableLabels = {
+  "zendesk_tickets": "Zendesk Tickets",
+  "conversation_data": "Conversation Data",
+  "queue_data": "Queue Data",
+}
 const tableNames = Object.keys(tableSchemas);
 
 let configuredFields = [];
@@ -41,7 +46,8 @@ function init() {
 
   tableNames.forEach((tableName) => {
     const option = document.createElement("OPTION");
-    option.textContent = option.value = tableName;
+    option.textContent = tableLabels[tableName];
+    option.value = tableName;
     dataSourceSelect.appendChild(option);
   });
   
@@ -91,13 +97,16 @@ function createFieldElement(fieldName, tableName, fieldType, showActions = false
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "field-actions";
     
-    const linkBtn = document.createElement("button");
-    linkBtn.className = "link-btn";
-    linkBtn.textContent = "Link";
-    linkBtn.onclick = (e) => {
-      e.stopPropagation();
-      createJoin(fieldName, tableName);
-    };
+    if (fieldType !== T5) {
+      const linkBtn = document.createElement("button");
+      linkBtn.className = "link-btn";
+      linkBtn.textContent = "Link";
+      linkBtn.onclick = (e) => {
+        e.stopPropagation();
+        createJoin(fieldName, tableName);
+      };
+      actionsDiv.appendChild(linkBtn);
+    }
     
     const removeBtn = document.createElement("button");
     removeBtn.className = "remove-btn";
@@ -107,7 +116,6 @@ function createFieldElement(fieldName, tableName, fieldType, showActions = false
       removeConfiguredField(fieldName, tableName);
     };
     
-    actionsDiv.appendChild(linkBtn);
     actionsDiv.appendChild(removeBtn);
     fieldDiv.appendChild(actionsDiv);
   }
@@ -218,6 +226,15 @@ function updateConfiguredList() {
     configuredList.appendChild(fieldElement);
   });
   stylizeJoinedElements();
+}
+
+function runReport() {
+  const fields = configuredFields.slice();
+  const joins2 = joins.slice();
+  const query = "SELECT";
+  fields.forEach(f => {
+    query += ""
+  });
 }
 
 // Create a join between fields
