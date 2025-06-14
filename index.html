@@ -25,9 +25,15 @@
       
       <div class="list-section">
         <div class="section-header">
-          <div class="section-title">Report Fields</div>
+          <div class="section-title">Rows</div>
         </div>
-        <div class="field-list" id="configuredList">
+        <div class="field-list" id="configuredList-rows">
+          <div class="empty-state">Drag fields here to configure your query</div>
+        </div>
+        <div class="section-header" style="margin-top: 20px">
+          <div class="section-title">Columns/Values</div>
+        </div>
+        <div class="field-list" id="configuredList-cols">
           <div class="empty-state">Drag fields here to configure your query</div>
         </div>
       </div>
@@ -35,6 +41,9 @@
     
     <div class="joins-section">
       <div class="joins-title">Report</div>
+      <div id="tableContainer">
+        <div class="table-container"></div>
+      </div>
       <div id="joinsList"></div>
     </div>
 
@@ -43,7 +52,7 @@
       <div class="modal">
         <div class="modal-header">
           <div class="modal-title">Create Join</div>
-          <button class="modal-close" onclick="closeLinkModal()">×</button>
+          <button class="modal-close">×</button>
         </div>
         
         <div class="source-field-info" id="sourceFieldInfo">
@@ -58,11 +67,6 @@
       </div>
     </div>
   </div>
-  <script>
-    sqlConnection = initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
-    }).then(SQL => new SQL.Database());
-  </script>
-  <script src="app.js"></script>
+  <script src="app.js" type="module"></script>
 </body>
 </html>

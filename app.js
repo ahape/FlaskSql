@@ -1,75 +1,36 @@
 /*
  vim:ts=2 sw=2
 */
-const T1 = "Unique";
-const T2 = "Enumerable";
-const T3 = "Subject";
-const T4 = "Group";
-const T5 = "Metric";
-const tableSchemas = {
-  zendesk_tickets: [
-    { name: "date", type: T1 },
-    { name: "customer", type: T3 },
-    { name: "assignee", type: T3 },
-    { name: "organization", type: T4 },
-    { name: "avg_resolution_time", type: T5 },
-    { name: "avg_nps_score", type: T5 },
-  ],
-  conversation_data: [
-    { name: "datetime", type: T1 },
-    { name: "agent", type: T3 },
-    { name: "queue", type: T4 },
-    { name: "avg_handle_time", type: T5 }
-  ],
-  queue_data: [
-    { name: "datetime", type: T1 },
-    { name: "next_party", type: T3 },
-    { name: "queue", type: T4 },
-    { name: "avg_wait_time", type: T5 }
-  ],
-};
-const tableLabels = {
-  "zendesk_tickets": "Zendesk Tickets",
-  "conversation_data": "Conversation Data",
-  "queue_data": "Queue Data",
-}
-const tableNames = Object.keys(tableSchemas);
 
-sqlConnection.then(db => {
-  db.run(`CREATE TABLE zendesk_tickets (
-    date datetime,
-    customer text,
-    assignee text,
-    organization text,
-    avg_resolution_time int,
-    avg_nps_score int
-  );`);
-  db.run("INSERT INTO zendesk_tickets VALUES (?, ?, ?, ?, ?, ?)",
-    ["2025-06-13", "Alice", "George", "Telecom", 10, 10]);
-  db.run("INSERT INTO zendesk_tickets VALUES (?, ?, ?, ?, ?, ?)",
-    ["2025-06-14", "Brett", "George", "Telecom", 3, 9]);
-  const result = db.exec("SELECT * FROM zendesk_tickets");
-  console.log(result);
-});
+import { sqlConnection, tableNames, tableSchemas } from "./tables.js";
+import { showLinkModal } from "./linkModal.js";
+import { setupDragAndDrop } from "./dragAndDrop.js";
 
-let configuredFields = [];
-let joins = [];
-let draggedElement = null;
+export let configuredFields = [];
+export let joins = [];
 
 // Initialize the app
 function init() {
+  setupDataSourceSelect();
+  setupDragAndDrop();
+  updateAvailableFields();
+}
+
+function setupDataSourceSelect() {
   const dataSourceSelect = document.getElementById("dataSourceSelect");
   dataSourceSelect.addEventListener("change", updateAvailableFields);
 
+  const tableLabels = {
+    "zendesk_tickets": "Zendesk Tickets",
+    "conversation_data": "Conversation Data",
+    "queue_data": "Queue Data",
+  }
   tableNames.forEach((tableName) => {
     const option = document.createElement("OPTION");
     option.textContent = tableLabels[tableName];
     option.value = tableName;
     dataSourceSelect.appendChild(option);
   });
-  
-  setupDragAndDrop();
-  updateAvailableFields();
 }
 
 // Update available fields based on selected data source
@@ -114,7 +75,7 @@ function createFieldElement(fieldName, tableName, fieldType, showActions = false
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "field-actions";
     
-    if (fieldType !== T5) {
+    if (fieldType !== "metric") {
       const linkBtn = document.createElement("button");
       linkBtn.className = "link-btn";
       linkBtn.textContent = "Link";
@@ -130,7 +91,7 @@ function createFieldElement(fieldName, tableName, fieldType, showActions = false
     removeBtn.innerHTML = "×";
     removeBtn.onclick = (e) => {
       e.stopPropagation();
-      removeConfiguredField(fieldName, tableName);
+      removeFromConfigured(fieldName, tableName);
     };
     
     actionsDiv.appendChild(removeBtn);
@@ -140,124 +101,76 @@ function createFieldElement(fieldName, tableName, fieldType, showActions = false
   return fieldDiv;
 }
 
-// Setup drag and drop functionality
-function setupDragAndDrop() {
-  const availableList = document.getElementById("availableList");
-  const configuredList = document.getElementById("configuredList");
-  
-  // Add event listeners for drag and drop
-  [availableList, configuredList].forEach(list => {
-    list.addEventListener("dragover", handleDragOver);
-    list.addEventListener("drop", handleDrop);
-    list.addEventListener("dragenter", handleDragEnter);
-    list.addEventListener("dragleave", handleDragLeave);
-  });
-  
-  // Delegate drag start events
-  document.addEventListener("dragstart", (e) => {
-    if (e.target.classList.contains("field-item")) {
-      draggedElement = e.target;
-      e.target.classList.add("dragging");
-    }
-  });
-  
-  document.addEventListener("dragend", (e) => {
-    if (e.target.classList.contains("field-item")) {
-      e.target.classList.remove("dragging");
-      draggedElement = null;
-    }
-  });
-}
-
-function handleDragOver(e) {
-  e.preventDefault();
-}
-
-function handleDragEnter(e) {
-  if (e.target.classList.contains("field-list")) {
-    e.target.classList.add("drag-over");
-  }
-}
-
-function handleDragLeave(e) {
-  if (e.target.classList.contains("field-list") && !e.target.contains(e.relatedTarget)) {
-    e.target.classList.remove("drag-over");
-  }
-}
-
-function handleDrop(e) {
-  e.preventDefault();
-  const targetList = e.target.closest(".field-list");
-  targetList.classList.remove("drag-over");
-  
-  if (!draggedElement) return;
-  
-  const fieldName = draggedElement.dataset.field;
-  const tableName = draggedElement.dataset.table;
-  const fieldType = draggedElement.dataset.type;
-  
-  if (targetList.id === "configuredList") {
-    addToConfigured(fieldName, tableName, fieldType);
-  } else if (targetList.id === "availableList") {
-    removeFromConfigured(fieldName, tableName);
-  }
-}
-
 // Add field to configured list
-function addToConfigured(fieldName, tableName, fieldType) {
+export function addToConfigured(fieldName, tableName, fieldType, isRow) {
   const exists = configuredFields.some(f => f.field === fieldName && f.table === tableName);
   if (exists) return;
   
-  configuredFields.push({ field: fieldName, table: tableName, type: fieldType });
+  configuredFields.push({ field: fieldName, table: tableName, type: fieldType, isRow });
   updateConfiguredList();
 }
 
 // Remove field from configured list
-function removeFromConfigured(fieldName, tableName) {
+export function removeFromConfigured(fieldName, tableName) {
   const toRemove = configuredFields.find(f => f.field === fieldName && f.table === tableName);
+  if (!toRemove) return;
   configuredFields.splice(configuredFields.indexOf(toRemove), 1);
-  const existingJoin = joins.find(j => joinIncludesField(j, fieldName, tableName));
+  const existingJoin = joins.find(j => isFieldBeingJoined(j, fieldName, tableName));
   if (existingJoin) {
     removeJoin(existingJoin.key);
   }
   updateConfiguredList();
 }
 
-// Remove configured field via button
-function removeConfiguredField(fieldName, tableName) {
-  removeFromConfigured(fieldName, tableName);
-}
-
 // Update the configured fields display
 function updateConfiguredList() {
-  const configuredList = document.getElementById("configuredList");
-  
+  const configuredRows = document.getElementById("configuredList-rows");
+  const configuredCols = document.getElementById("configuredList-cols");
   if (configuredFields.length === 0) {
-    configuredList.innerHTML = `<div class="empty-state">Drag fields here to configure your query</div>`;
+    configuredRows.innerHTML = `<div class="empty-state">Drag fields here to configure your query</div>`;
+    configuredCols.innerHTML = `<div class="empty-state">Drag fields here to configure your query</div>`;
     return;
   }
-  
-  configuredList.innerHTML = "";
+  configuredRows.innerHTML = "";
+  configuredCols.innerHTML = "";
   configuredFields.forEach(field => {
     const fieldElement = createFieldElement(field.field, field.table, field.type, true);
-    configuredList.appendChild(fieldElement);
+    if (field.isRow) {
+      configuredRows.appendChild(fieldElement);
+    } else {
+      configuredCols.appendChild(fieldElement);
+    }
   });
+  configuredFields.sort((a, b) => {
+    if (a.isRow && b.isRow) return 0;
+    if (a.isRow) return -1;
+    if (b.isRow) return 1;
+    if (!a.isRow && !b.isRow) return 0;
+  });
+  handleStateChange();
+}
+
+export function handleStateChange() {
   stylizeJoinedElements();
   runReport();
 }
 
-function runReport() {
-  const fields = configuredFields.slice();
-  if (fields.length === 0) return;
-  const primaryTable = fields[0].table;
+function buildSqlQuery() {
+  const primaryTable = configuredFields[0].table;
   const queryFields = [];
-  fields.forEach(f => {
+  const groupFields = [];
+  configuredFields.forEach(f => {
     const prefix = f.table === primaryTable ? "" : `${f.table}.`;
-    queryFields.push(prefix + f.field);
+    const field = " " + prefix + f.field;
+    if (f.isRow) {
+      groupFields.push(field);
+    }
+    queryFields.push(field);
   });
-  let query = "SELECT ";
-  query += queryFields.join(", ");
-  query += ` FROM ${primaryTable}`;
+  let query = "SELECT\n";
+  query += queryFields.join(",\n");
+  query += `\nFROM ${primaryTable}`;
+  const tableJoins = {};
   joins.forEach(j => {
     const left = j.leftTable !== primaryTable ?
       { table: j.leftTable, field: j.leftField } :
@@ -265,26 +178,39 @@ function runReport() {
     const right = j.leftTable !== left.table ?
       { table: j.leftTable, field: j.leftField } :
       { table: j.rightTable, field: j.rightField };
-    query += `\nJOIN ${left.table} ON ${left.table}.${left.field} = ${right.table}.${right.field}`;
+    const criteria = (tableJoins[left.table] ||= []);
+    criteria.push(`${left.table}.${left.field} = ${right.table}.${right.field}`);
   });
-  console.log(query);
+  Object.keys(tableJoins).forEach(tableName => {
+    const criteria = tableJoins[tableName].join("\n AND ");
+    query += `\nJOIN ${tableName}\n ON ${criteria}`;
+  });
+  if (groupFields.length) {
+    query += `\nGROUP BY${groupFields}`;
+  }
+  console.debug(query);
+  return query;
 }
 
-// Create a join between fields
-function createJoin(fieldName, tableName) {
-  const sourceField = tableSchemas[tableName].find(f => f.name === fieldName);
-  const availableTargets = getAvailableJoinTargets(sourceField, tableName);
-  
-  if (availableTargets.length === 0) {
-    alert("Add fields from other tables to create joins");
-    return;
-  }
-  
-  showLinkModal(fieldName, tableName, availableTargets);
+const emptyQueryResult = { columns: [], values: [] };
+
+function runReport() {
+  if (configuredFields.length === 0) return;
+  const query = buildSqlQuery();
+  sqlConnection.then(db => {
+    let result = emptyQueryResult;
+    try {
+      result = db.exec(query)[0] || emptyQueryResult;
+      console.debug(result);
+    } catch (e) {
+      console.warn(e);
+    }
+    createTable(result.columns, result.values);
+  });
 }
 
 // Get available fields that can be joined with the selected field
-function getAvailableJoinTargets(sourceField, sourceTableName) {
+export function getAvailableJoinTargets(sourceField, sourceTableName) {
   const targets = [];
   
   // Get all fields from all other data sources (tables)
@@ -307,102 +233,30 @@ function getAvailableJoinTargets(sourceField, sourceTableName) {
   return targets;
 }
 
-
-
-// Show the link modal
-function showLinkModal(sourceFieldName, sourceTableName, availableTargets) {
-  const modal = document.getElementById("linkModal");
-  const sourceFieldInfo = document.getElementById("sourceFieldInfo");
-  const sourceFieldNameEl = document.getElementById("sourceFieldName");
-  const sourceFieldDetailsEl = document.getElementById("sourceFieldDetails");
-  const targetFieldsList = document.getElementById("targetFieldsList");
-  
-  // Set source field info
-  const sourceField = configuredFields.find(f => f.field === sourceFieldName && f.table === sourceTableName);
-  sourceFieldNameEl.textContent = sourceFieldName;
-  sourceFieldDetailsEl.textContent = `${sourceTableName} (${sourceField.type})`;
-  
-  // Clear and populate target fields
-  targetFieldsList.innerHTML = "";
+// Create a join between fields
+function createJoin(fieldName, tableName) {
+  const sourceField = tableSchemas[tableName].find(f => f.name === fieldName);
+  const availableTargets = getAvailableJoinTargets(sourceField, tableName);
   
   if (availableTargets.length === 0) {
-    targetFieldsList.innerHTML = `<div class="no-targets">No fields available for joining.<br>All available tables are already represented.</div>`;
-  } else {
-    availableTargets.forEach(target => {
-      const targetItem = document.createElement("div");
-      targetItem.className = "target-field-item";
-      targetItem.onclick = () => {
-        executeJoin(sourceFieldName, sourceTableName, target.field, target.table);
-        closeLinkModal();
-      };
-      
-      const targetInfo = document.createElement("div");
-      targetInfo.className = "target-field-info";
-      
-      const targetName = document.createElement("div");
-      targetName.className = "target-field-name";
-      targetName.textContent = target.field;
-      
-      const targetDetails = document.createElement("div");
-      targetDetails.className = "target-field-details";
-      targetDetails.textContent = `${target.table} (${target.type})`;
-      
-      targetInfo.appendChild(targetName);
-      targetInfo.appendChild(targetDetails);
-      
-      const arrow = document.createElement("div");
-      arrow.className = "target-field-arrow";
-      arrow.textContent = "→";
-      
-      targetItem.appendChild(targetInfo);
-      targetItem.appendChild(arrow);
-      targetFieldsList.appendChild(targetItem);
-    });
-  }
-  
-  // Show modal
-  modal.classList.add("active");
-}
-
-// Close the link modal
-function closeLinkModal() {
-  const modal = document.getElementById("linkModal");
-  modal.classList.remove("active");
-}
-
-// Execute the join
-function executeJoin(leftField, leftTable, rightField, rightTable) {
-  const joinKey = `${leftTable}.${leftField}-${rightTable}.${rightField}`;
-  const existingJoin = joins.find(j => j.key === joinKey);
-  
-  if (existingJoin) {
-    alert("This join already exists");
+    alert("Add fields from other tables to create joins");
     return;
   }
   
-  const join = {
-    key: joinKey,
-    leftTable: leftTable,
-    leftField: leftField,
-    rightTable: rightTable,
-    rightField: rightField
-  };
-  
-  joins.push(join);
-  stylizeJoinedElements();
-  runReport();
+  showLinkModal(fieldName, tableName, availableTargets);
 }
 
 function stylizeJoinedElements() {
   const configuredData = configuredFields.map(field => {
-    const element = document.body.querySelector(`#configuredList [data-field="${field.field}"][data-table="${field.table}"]`);
+    const dataSelector = `[data-field="${field.field}"][data-table="${field.table}"]`;
+    const element = document.body.querySelector(`#configuredList-rows ${dataSelector}, #configuredList-cols ${dataSelector}`);
     element.classList.remove("join-item");
     element.querySelector(".field-name").textContent = field.field;
     return { field, element }
   });
   joins.forEach(join => {
     const field = configuredData.find(d =>
-      joinIncludesField(join, d.field.field, d.field.table));
+      isFieldBeingJoined(join, d.field.field, d.field.table));
     if (field) {
       field.element.classList.add("join-item");
       field.element.querySelector(".field-name").textContent = `${join.leftTable}.${join.leftField} = ${join.rightTable}.${join.rightField}`;
@@ -410,7 +264,7 @@ function stylizeJoinedElements() {
   });
 }
 
-function joinIncludesField(join, fieldName, tableName) {
+function isFieldBeingJoined(join, fieldName, tableName) {
   return (join.leftField === fieldName && join.leftTable === tableName) ||
          (join.rightField === fieldName && join.rightTable === tableName);
 }
@@ -420,20 +274,42 @@ function removeJoin(joinKey) {
   joins = joins.filter(j => j.key !== joinKey);
 }
 
+function createTable(columns, values) {
+  const tableContainer = document.getElementById('tableContainer');
+
+  if (values.length === 0) {
+    tableContainer.innerHTML = '<div class="no-data">No data to display</div>';
+    return;
+  }
+
+  let html = '<div class="table-container"><table>';
+
+  // Create header
+  html += '<thead><tr>';
+  columns.forEach(column => {
+    html += `<th>${escapeHtml(column)}</th>`;
+  });
+  html += '</tr></thead>';
+
+  // Create body
+  html += '<tbody>';
+  values.forEach(row => {
+    html += '<tr>';
+    row.forEach(cell => {
+      html += `<td>${escapeHtml(String(cell))}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table></div>';
+
+  tableContainer.innerHTML = html;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Initialize the app when the page loads
 init();
-
-// Close modal when clicking outside
-document.addEventListener("click", (e) => {
-  const modal = document.getElementById("linkModal");
-  if (e.target === modal) {
-    closeLinkModal();
-  }
-});
-
-// Close modal with Escape key
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    closeLinkModal();
-  }
-});
