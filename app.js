@@ -1,8 +1,7 @@
 /*
  vim:ts=2 sw=2
 */
-
-import { sqlConnection, tableNames, tableSchemas } from "./tables.js";
+import { sqlConnection, tableNames, tableLabels, tableSchemas } from "./tables.js";
 import { showLinkModal } from "./linkModal.js";
 import { setupDragAndDrop } from "./dragAndDrop.js";
 
@@ -20,14 +19,9 @@ function setupDataSourceSelect() {
   const dataSourceSelect = document.getElementById("dataSourceSelect");
   dataSourceSelect.addEventListener("change", updateAvailableFields);
 
-  const tableLabels = {
-    "zendesk_tickets": "Zendesk Tickets",
-    "conversation_data": "Conversation Data",
-    "queue_data": "Queue Data",
-  }
-  tableNames.forEach((tableName) => {
+  tableNames.forEach((tableName, i) => {
     const option = document.createElement("OPTION");
-    option.textContent = tableLabels[tableName];
+    option.textContent = tableLabels[i];
     option.value = tableName;
     dataSourceSelect.appendChild(option);
   });
@@ -38,44 +32,44 @@ function updateAvailableFields() {
   const selectedTable = document.getElementById("dataSourceSelect").value;
   const availableList = document.getElementById("availableList");
   const fields = tableSchemas[selectedTable];
-  
+
   availableList.innerHTML = "";
-  
+
   fields.forEach(field => {
-    const fieldElement = createFieldElement(field.name, selectedTable, field.type);
+    const fieldElement = createFieldElement(field.name, selectedTable, field.group);
     availableList.appendChild(fieldElement);
   });
 }
 
 // Create a field element
-function createFieldElement(fieldName, tableName, fieldType, showActions = false) {
+function createFieldElement(fieldName, tableName, fieldGroup, showActions = false) {
   const fieldDiv = document.createElement("div");
   fieldDiv.className = "field-item";
   fieldDiv.draggable = true;
   fieldDiv.dataset.field = fieldName;
   fieldDiv.dataset.table = tableName;
-  fieldDiv.dataset.type = fieldType;
-  
+  fieldDiv.dataset.group = fieldGroup;
+
   const fieldInfo = document.createElement("div");
   fieldInfo.className = "field-info";
-  
+
   const nameSpan = document.createElement("div");
   nameSpan.className = "field-name";
   nameSpan.textContent = fieldName;
-  
+
   const sourceSpan = document.createElement("div");
   sourceSpan.className = "field-source";
-  sourceSpan.textContent = `${tableName} (${fieldType})`;
-  
+  sourceSpan.textContent = `${tableName} (${fieldGroup})`;
+
   fieldInfo.appendChild(nameSpan);
   fieldInfo.appendChild(sourceSpan);
   fieldDiv.appendChild(fieldInfo);
-  
+
   if (showActions) {
     const actionsDiv = document.createElement("div");
     actionsDiv.className = "field-actions";
-    
-    if (fieldType !== "metric") {
+
+    if (fieldGroup !== "metric") {
       const linkBtn = document.createElement("button");
       linkBtn.className = "link-btn";
       linkBtn.textContent = "Link";
@@ -85,7 +79,7 @@ function createFieldElement(fieldName, tableName, fieldType, showActions = false
       };
       actionsDiv.appendChild(linkBtn);
     }
-    
+
     const removeBtn = document.createElement("button");
     removeBtn.className = "remove-btn";
     removeBtn.innerHTML = "×";
@@ -93,20 +87,20 @@ function createFieldElement(fieldName, tableName, fieldType, showActions = false
       e.stopPropagation();
       removeFromConfigured(fieldName, tableName);
     };
-    
+
     actionsDiv.appendChild(removeBtn);
     fieldDiv.appendChild(actionsDiv);
   }
-  
+
   return fieldDiv;
 }
 
 // Add field to configured list
-export function addToConfigured(fieldName, tableName, fieldType, isRow) {
+export function addToConfigured(fieldName, tableName, fieldGroup, isRow) {
   const exists = configuredFields.some(f => f.field === fieldName && f.table === tableName);
   if (exists) return;
-  
-  configuredFields.push({ field: fieldName, table: tableName, type: fieldType, isRow });
+
+  configuredFields.push({ field: fieldName, table: tableName, group: fieldGroup, isRow });
   updateConfiguredList();
 }
 
@@ -134,7 +128,7 @@ function updateConfiguredList() {
   configuredRows.innerHTML = "";
   configuredCols.innerHTML = "";
   configuredFields.forEach(field => {
-    const fieldElement = createFieldElement(field.field, field.table, field.type, true);
+    const fieldElement = createFieldElement(field.field, field.table, field.group, true);
     if (field.isRow) {
       configuredRows.appendChild(fieldElement);
     } else {
@@ -160,8 +154,7 @@ function buildSqlQuery() {
   const queryFields = [];
   const groupFields = [];
   configuredFields.forEach(f => {
-    const prefix = f.table === primaryTable ? "" : `${f.table}.`;
-    const field = " " + prefix + f.field;
+    const field = ` ${f.table}.${f.field}`;
     if (f.isRow) {
       groupFields.push(field);
     }
@@ -212,7 +205,7 @@ function runReport() {
 // Get available fields that can be joined with the selected field
 export function getAvailableJoinTargets(sourceField, sourceTableName) {
   const targets = [];
-  
+
   // Get all fields from all other data sources (tables)
   tableNames.forEach(tableName => {
     if (tableName !== sourceTableName &&
@@ -222,14 +215,14 @@ export function getAvailableJoinTargets(sourceField, sourceTableName) {
         targets.push({
           field: field.name,
           table: tableName,
-          type: field.type,
+          group: field.group,
         });
       });
     }
   });
   targets.sort((a, b) => a.field.localeCompare(b.field));
   targets.sort((a, b) => a.table.localeCompare(b.table));
-  targets.sort((a, b) => a.type === sourceField.type ? -1 : 0);
+  targets.sort((a, b) => a.group === sourceField.group ? -1 : 0);
   return targets;
 }
 
@@ -237,12 +230,12 @@ export function getAvailableJoinTargets(sourceField, sourceTableName) {
 function createJoin(fieldName, tableName) {
   const sourceField = tableSchemas[tableName].find(f => f.name === fieldName);
   const availableTargets = getAvailableJoinTargets(sourceField, tableName);
-  
+
   if (availableTargets.length === 0) {
     alert("Add fields from other tables to create joins");
     return;
   }
-  
+
   showLinkModal(fieldName, tableName, availableTargets);
 }
 
@@ -274,15 +267,17 @@ function removeJoin(joinKey) {
   joins = joins.filter(j => j.key !== joinKey);
 }
 
+const noDataHtml = '<div class="no-data">No data to display</div>';
+
 function createTable(columns, values) {
   const tableContainer = document.getElementById('tableContainer');
 
   if (values.length === 0) {
-    tableContainer.innerHTML = '<div class="no-data">No data to display</div>';
+    tableContainer.innerHTML = noDataHtml;
     return;
   }
 
-  let html = '<div class="table-container"><table>';
+  let html = '<table>';
 
   // Create header
   html += '<thead><tr>';
@@ -300,9 +295,156 @@ function createTable(columns, values) {
     });
     html += '</tr>';
   });
-  html += '</tbody></table></div>';
+  html += '</tbody></table>';
 
-  tableContainer.innerHTML = html;
+  html = applyRowspanGrouping(html);
+  tableContainer.innerHTML = `<div class="table-container">${html}</div>`;
+}
+
+function applyRowspanGrouping(html) {
+  const table = document.createElement("TABLE");
+  table.innerHTML = html;
+
+  const docFrag = document.createElement("DIV");
+  docFrag.appendChild(table);
+
+  const tbody = table.querySelector('tbody');
+  if (!tbody) return noDataHtml;
+
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  if (rows.length === 0) return noDataHtml;
+
+  const numColumns = rows[0].cells.length;
+
+  // Helper function to get the actual cell value at a given row/column position
+  // accounting for rowspans that might affect which physical cell we're looking at
+  function getCellValue(rowIndex, colIndex) {
+    const row = rows[rowIndex];
+    let physicalCellIndex = 0;
+    let logicalCellIndex = 0;
+
+    // Walk through the cells in this row to find the one at our logical column
+    for (let cell of row.cells) {
+      if (logicalCellIndex === colIndex) {
+        return cell.textContent.trim();
+      }
+
+      // This cell might span multiple logical columns due to previous rowspan operations
+      // For now, we assume each cell represents one logical column
+      logicalCellIndex++;
+    }
+
+    // If we can't find the cell in this row, it might be spanned from above
+    // Look backwards through rows to find the cell that spans to this position
+    for (let checkRow = rowIndex - 1; checkRow >= 0; checkRow--) {
+      const checkRowEl = rows[checkRow];
+      let checkLogicalCol = 0;
+
+      for (let cell of checkRowEl.cells) {
+        const rowspan = parseInt(cell.rowSpan) || 1;
+
+        if (checkLogicalCol === colIndex && (checkRow + rowspan) > rowIndex) {
+          return cell.textContent.trim();
+        }
+
+        checkLogicalCol++;
+      }
+    }
+
+    return null; // Shouldn't happen in a well-formed table
+  }
+
+  // Helper function to get the actual cell element at a given row/column position
+  function getCell(rowIndex, colIndex) {
+    const row = rows[rowIndex];
+    let logicalCellIndex = 0;
+
+    for (let cell of row.cells) {
+      if (logicalCellIndex === colIndex) {
+        return cell;
+      }
+      logicalCellIndex++;
+    }
+
+    return null; // Cell is spanned from above
+  }
+
+  // Process from left to right (column by column)
+  for (let col = 0; col < numColumns; col++) {
+    let rowIndex = 0;
+
+    while (rowIndex < rows.length) {
+      const startValue = getCellValue(rowIndex, col);
+      if (startValue === null) {
+        rowIndex++;
+        continue;
+      }
+
+      let groupEnd = rowIndex + 1;
+
+      // Find how many consecutive rows have the same value in this column
+      while (groupEnd < rows.length &&
+             getCellValue(groupEnd, col) === startValue) {
+        groupEnd++;
+      }
+
+      const groupSize = groupEnd - rowIndex;
+
+      // Check if we can apply rowspan (all left columns must span at least this many rows)
+      let canApplyRowspan = true;
+      if (col > 0 && groupSize > 1) {
+        // Check each row in the group to see if left columns have adequate rowspan
+        for (let checkRow = rowIndex; checkRow < groupEnd; checkRow++) {
+          for (let leftCol = 0; leftCol < col; leftCol++) {
+            // Find the cell that covers this position
+            let foundSpanningCell = false;
+
+            for (let searchRow = checkRow; searchRow >= 0; searchRow--) {
+              const cell = getCell(searchRow, leftCol);
+              if (cell) {
+                const rowspan = parseInt(cell.rowSpan) || 1;
+                if (searchRow + rowspan > checkRow) {
+                  // This cell spans to our current row
+                  if (searchRow + rowspan < groupEnd) {
+                    // But it doesn't span far enough for our desired group
+                    canApplyRowspan = false;
+                    break;
+                  }
+                  foundSpanningCell = true;
+                  break;
+                }
+              }
+            }
+
+            if (!canApplyRowspan || !foundSpanningCell) {
+              canApplyRowspan = false;
+              break;
+            }
+          }
+          if (!canApplyRowspan) break;
+        }
+      }
+
+      if (canApplyRowspan && groupSize > 1) {
+        // Apply rowspan to the first cell in the group
+        const firstCell = getCell(rowIndex, col);
+        if (firstCell) {
+          firstCell.rowSpan = groupSize;
+
+          // Remove corresponding cells from subsequent rows in the group
+          for (let i = rowIndex + 1; i < groupEnd; i++) {
+            const cellToRemove = getCell(i, col);
+            if (cellToRemove) {
+              cellToRemove.remove();
+            }
+          }
+        }
+      }
+
+      rowIndex = groupEnd;
+    }
+  }
+  return docFrag.innerHTML;
 }
 
 function escapeHtml(text) {

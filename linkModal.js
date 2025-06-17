@@ -8,12 +8,12 @@ import { handleStateChange, getAvailableJoinTargets, configuredFields, joins } f
 function executeJoin(leftField, leftTable, rightField, rightTable) {
   const joinKey = `${leftTable}.${leftField}-${rightTable}.${rightField}`;
   const existingJoin = joins.find(j => j.key === joinKey);
-  
+
   if (existingJoin) {
     alert("This join already exists");
     return;
   }
-  
+
   const join = {
     key: joinKey,
     leftTable: leftTable,
@@ -21,7 +21,7 @@ function executeJoin(leftField, leftTable, rightField, rightTable) {
     rightTable: rightTable,
     rightField: rightField
   };
-  
+
   joins.push(join);
   handleStateChange();
 }
@@ -38,15 +38,15 @@ export function showLinkModal(sourceFieldName, sourceTableName, availableTargets
   const sourceFieldNameEl = document.getElementById("sourceFieldName");
   const sourceFieldDetailsEl = document.getElementById("sourceFieldDetails");
   const targetFieldsList = document.getElementById("targetFieldsList");
-  
+
   // Set source field info
   const sourceField = configuredFields.find(f => f.field === sourceFieldName && f.table === sourceTableName);
   sourceFieldNameEl.textContent = sourceFieldName;
-  sourceFieldDetailsEl.textContent = `${sourceTableName} (${sourceField.type})`;
-  
+  sourceFieldDetailsEl.textContent = `${sourceTableName} (${sourceField.group})`;
+
   // Clear and populate target fields
   targetFieldsList.innerHTML = "";
-  
+
   if (availableTargets.length === 0) {
     targetFieldsList.innerHTML = `<div class="no-targets">No fields available for joining.<br>All available tables are already represented.</div>`;
   } else {
@@ -57,31 +57,31 @@ export function showLinkModal(sourceFieldName, sourceTableName, availableTargets
         executeJoin(sourceFieldName, sourceTableName, target.field, target.table);
         closeLinkModal();
       };
-      
+
       const targetInfo = document.createElement("div");
       targetInfo.className = "target-field-info";
-      
+
       const targetName = document.createElement("div");
       targetName.className = "target-field-name";
       targetName.textContent = target.field;
-      
+
       const targetDetails = document.createElement("div");
       targetDetails.className = "target-field-details";
-      targetDetails.textContent = `${target.table} (${target.type})`;
-      
+      targetDetails.textContent = `${target.table} (${target.group})`;
+
       targetInfo.appendChild(targetName);
       targetInfo.appendChild(targetDetails);
-      
+
       const arrow = document.createElement("div");
       arrow.className = "target-field-arrow";
       arrow.textContent = "→";
-      
+
       targetItem.appendChild(targetInfo);
       targetItem.appendChild(arrow);
       targetFieldsList.appendChild(targetItem);
     });
   }
-  
+
   // Show modal
   modal.classList.add("active");
 }
