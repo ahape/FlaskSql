@@ -7,6 +7,11 @@ import { setupDragAndDrop } from "./dragAndDrop.js";
 
 export let configuredFields = [];
 export let joins = [];
+export const tableContainer = document.getElementById('tableContainer');
+export const dataSourceSelect = document.getElementById("dataSourceSelect");
+export const availableList = document.getElementById("availableList");
+export const configuredRows = document.getElementById("configuredList-rows");
+export const configuredCols = document.getElementById("configuredList-cols");
 
 // Add field to configured list
 export function addToConfigured(fieldName, tableName, fieldGroup, isRow, insertIndex = -1) {
@@ -58,7 +63,6 @@ function init() {
 }
 
 function setupDataSourceSelect() {
-  const dataSourceSelect = document.getElementById("dataSourceSelect");
   dataSourceSelect.addEventListener("change", updateAvailableFields);
 
   tableNames.forEach((tableName, i) => {
@@ -71,8 +75,7 @@ function setupDataSourceSelect() {
 
 // Update available fields based on selected data source
 function updateAvailableFields() {
-  const selectedTable = document.getElementById("dataSourceSelect").value;
-  const availableList = document.getElementById("availableList");
+  const selectedTable = dataSourceSelect.value;
   const fields = tableSchemas[selectedTable];
 
   availableList.innerHTML = "";
@@ -124,8 +127,7 @@ function createFieldElement(fieldName, tableName, fieldGroup, showActions = fals
 
   const sourceSpan = document.createElement("div");
   sourceSpan.className = "field-source";
-  const _tableLabel = tableLabel(tableName);
-  sourceSpan.textContent = `${_tableLabel} (${fieldGroup})`;
+  sourceSpan.textContent = `${tableLabel(tableName)} (${fieldGroup})`;
 
   fieldInfo.appendChild(nameSpan);
   fieldInfo.appendChild(sourceSpan);
@@ -163,29 +165,27 @@ function createFieldElement(fieldName, tableName, fieldGroup, showActions = fals
 
 // Update the configured fields display
 function updateConfiguredList() {
-  const configuredRows = document.getElementById("configuredList-rows");
-  const configuredCols = document.getElementById("configuredList-cols");
   if (configuredFields.length === 0) {
     configuredRows.innerHTML = `<div class="empty-state">Drag fields here to configure your query</div>`;
     configuredCols.innerHTML = `<div class="empty-state">Drag fields here to configure your query</div>`;
-    return;
+  } else {
+    configuredRows.innerHTML = "";
+    configuredCols.innerHTML = "";
+    configuredFields.forEach(field => {
+      const fieldElement = createFieldElement(field.field, field.table, field.group, true);
+      if (field.isRow) {
+        configuredRows.appendChild(fieldElement);
+      } else {
+        configuredCols.appendChild(fieldElement);
+      }
+    });
+    configuredFields.sort((a, b) => {
+      if (a.isRow && b.isRow) return 0;
+      if (a.isRow) return -1;
+      if (b.isRow) return 1;
+      if (!a.isRow && !b.isRow) return 0;
+    });
   }
-  configuredRows.innerHTML = "";
-  configuredCols.innerHTML = "";
-  configuredFields.forEach(field => {
-    const fieldElement = createFieldElement(field.field, field.table, field.group, true);
-    if (field.isRow) {
-      configuredRows.appendChild(fieldElement);
-    } else {
-      configuredCols.appendChild(fieldElement);
-    }
-  });
-  configuredFields.sort((a, b) => {
-    if (a.isRow && b.isRow) return 0;
-    if (a.isRow) return -1;
-    if (b.isRow) return 1;
-    if (!a.isRow && !b.isRow) return 0;
-  });
   handleStateChange();
 }
 
@@ -229,7 +229,14 @@ function buildSqlQuery() {
 const emptyQueryResult = { columns: [], values: [] };
 
 function runReport() {
-  if (configuredFields.length === 0) return;
+  if (configuredFields.length === 0) {
+    tableContainer.innerHTML = '<div class="no-data">No rows, columns, or values configured</div>';
+    return;
+  }
+  if (!configuredFields.some(f => f.group === "metric")) {
+    tableContainer.innerHTML = '<div class="no-data">Report must contain at least one value (metric)</div>';
+    return;
+  }
   const query = buildSqlQuery();
   sqlConnection.then(db => {
     let result = emptyQueryResult;
@@ -289,8 +296,6 @@ function removeJoin(joinKey) {
 }
 
 function createTable(columns, values) {
-  const tableContainer = document.getElementById('tableContainer');
-
   if (values.length === 0) {
     tableContainer.innerHTML = '<div class="no-data">No data to display</div>';
     return;
