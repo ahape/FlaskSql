@@ -114,7 +114,7 @@ export const tableSchemas = {
       type: "float"
     },
   ],
-  "Recording Data": [ // table name = recording_data
+  "Voice Analytics": [ // table name = voice_analytics
     {
       name: "date",
       label: "Date",
@@ -172,7 +172,7 @@ sqlConnection.then(db => {
     abandoned int,
     answered int
   );`);
-  db.run(`CREATE TABLE recording_data (
+  db.run(`CREATE TABLE voice_analytics (
     date datetime,
     agent text,
     sentiment float,
@@ -192,6 +192,7 @@ sqlConnection.then(db => {
       ('2025-06-07', 'Inbound',  'George',  'Helen',   'Frank',    298.7, 25.6),
       ('2025-06-08', 'Outbound', 'Helen',   'Ian',     'George',   210.2, 14.8),
       ('2025-06-09', 'Inbound',  'Ian',     'Alice',   'Helen',    255.9, 19.7),
+      ('2025-06-09', 'Inbound',  'Joey',    'Alice',   'Helen',    155.9, 29.7),
       ('2025-06-10', 'Inbound',  'Alice',   'Carol',   'Ian',      188.3, 11.5);
   `);
   //
@@ -208,6 +209,7 @@ sqlConnection.then(db => {
       ('2025-06-07', 'George',  'Technical Support',  189.5, 7,  9),
       ('2025-06-08', 'Helen',   'Customer Support',   112.1, 3,  3),
       ('2025-06-09', 'Ian',     'Billing',            134.7, 2,  8),
+      ('2025-06-09', 'Larry',   'Billing',            104.7, 5,  7),
       ('2025-06-10', 'Alice',   'Sales',              95.6,  1,  4);
   `);
   //
@@ -224,13 +226,14 @@ sqlConnection.then(db => {
       ('2025-06-07', 'George',  'Post-Call Survey',     3.2),
       ('2025-06-08', 'Helen',   'Monthly Feedback',     4.6),
       ('2025-06-09', 'Ian',     'Post-Call Survey',     4.0),
+      ('2025-06-09', 'Dean',    'Post-Call Survey',     4.0),
       ('2025-06-10', 'Alice',   'Weekly Check-in',      4.4);
   `);
   //
-  // Recording Data
+  // Voice Analytics
   //
   db.run(`
-    INSERT INTO recording_data VALUES
+    INSERT INTO voice_analytics VALUES
       ('2025-06-01', 'Alice',   7.8, 12.5),
       ('2025-06-02', 'Bob',     8.2, 8.3),
       ('2025-06-03', 'Carol',   6.9, 15.7),
@@ -240,6 +243,7 @@ sqlConnection.then(db => {
       ('2025-06-07', 'George',  5.4, 22.1),
       ('2025-06-08', 'Helen',   8.5, 9.7),
       ('2025-06-09', 'Ian',     7.6, 14.3),
+      ('2025-06-09', 'Doug',    0.0, 24.3),
       ('2025-06-10', 'Alice',   8.0, 11.2);
   `);
 });

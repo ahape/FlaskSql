@@ -2,29 +2,7 @@
  vim:ts=2 sw=2
 */
 import { tableSchemas, tableNames } from "./tables.js";
-import { handleStateChange, getAvailableJoinTargets, configuredFields, joins } from "./app.js";
-
-// Execute the join
-function executeJoin(leftField, leftTable, rightField, rightTable) {
-  const joinKey = `${leftTable}.${leftField}-${rightTable}.${rightField}`;
-  const existingJoin = joins.find(j => j.key === joinKey);
-
-  if (existingJoin) {
-    alert("This join already exists");
-    return;
-  }
-
-  const join = {
-    key: joinKey,
-    leftTable: leftTable,
-    leftField: leftField,
-    rightTable: rightTable,
-    rightField: rightField
-  };
-
-  joins.push(join);
-  handleStateChange();
-}
+import { tableLabel, fieldLabel, handleStateChange, getAvailableJoinTargets, configuredFields, joins } from "./app.js";
 
 // Close the link modal
 function closeLinkModal() {
@@ -41,8 +19,8 @@ export function showLinkModal(sourceFieldName, sourceTableName, availableTargets
 
   // Set source field info
   const sourceField = configuredFields.find(f => f.field === sourceFieldName && f.table === sourceTableName);
-  sourceFieldNameEl.textContent = sourceFieldName;
-  sourceFieldDetailsEl.textContent = `${sourceTableName} (${sourceField.group})`;
+  sourceFieldNameEl.textContent = fieldLabel(sourceFieldName, sourceTableName);
+  sourceFieldDetailsEl.textContent = `${tableLabel(sourceTableName)} (${sourceField.group})`;
 
   // Clear and populate target fields
   targetFieldsList.innerHTML = "";
@@ -50,7 +28,7 @@ export function showLinkModal(sourceFieldName, sourceTableName, availableTargets
   if (availableTargets.length === 0) {
     targetFieldsList.innerHTML = `<div class="no-targets">No fields available for joining.<br>All available tables are already represented.</div>`;
   } else {
-    availableTargets.forEach(target => {
+    availableTargets.filter(x => x.group !== "metric").forEach(target => {
       const targetItem = document.createElement("div");
       targetItem.className = "target-field-item";
       targetItem.onclick = () => {
@@ -63,11 +41,11 @@ export function showLinkModal(sourceFieldName, sourceTableName, availableTargets
 
       const targetName = document.createElement("div");
       targetName.className = "target-field-name";
-      targetName.textContent = target.field;
+      targetName.textContent = fieldLabel(target.field, target.table);
 
       const targetDetails = document.createElement("div");
       targetDetails.className = "target-field-details";
-      targetDetails.textContent = `${target.table} (${target.group})`;
+      targetDetails.textContent = `${tableLabel(target.table)} (${target.group})`;
 
       targetInfo.appendChild(targetName);
       targetInfo.appendChild(targetDetails);
@@ -102,3 +80,25 @@ document.addEventListener("keydown", (e) => {
     closeLinkModal();
   }
 });
+
+// Execute the join
+function executeJoin(leftField, leftTable, rightField, rightTable) {
+  const joinKey = `${leftTable}.${leftField}-${rightTable}.${rightField}`;
+  const existingJoin = joins.find(j => j.key === joinKey);
+
+  if (existingJoin) {
+    alert("This join already exists");
+    return;
+  }
+
+  const join = {
+    key: joinKey,
+    leftTable: leftTable,
+    leftField: leftField,
+    rightTable: rightTable,
+    rightField: rightField
+  };
+
+  joins.push(join);
+  handleStateChange();
+}
