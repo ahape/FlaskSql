@@ -228,26 +228,45 @@ function buildSqlQuery() {
 
 const emptyQueryResult = { columns: [], values: [] };
 
-function runReport() {
+function validateReport() {
   if (configuredFields.length === 0) {
     tableContainer.innerHTML = '<div class="no-data">No rows, columns, or values configured</div>';
-    return;
+    return false;
   }
+  /*
   if (!configuredFields.some(f => f.group === "metric")) {
     tableContainer.innerHTML = '<div class="no-data">Report must contain at least one value (metric)</div>';
-    return;
+    return false;
   }
-  const query = buildSqlQuery();
-  sqlConnection.then(db => {
-    let result = emptyQueryResult;
-    try {
-      result = db.exec(query)[0] || emptyQueryResult;
-      console.debug(result);
-    } catch (e) {
-      console.warn(e);
-    }
-    createTable(result.columns, result.values);
+  */
+  const fieldsByTable = configuredFields.reduce((agg, cur) => {
+    (agg[cur.table] ||= []).push(cur);
+    return agg;
+  }, {});
+
+  const tableWithoutMetric = Object.keys(fieldsByTable).find(table => {
+    return !fieldsByTable[table].some(f => f.group === "metric");
   });
+  if (tableWithoutMetric) {
+    tableContainer.innerHTML = `<div class="no-data">Report must contain at least one value (metric) from ${tableLabel(tableWithoutMetric)} </div>`;
+    return false;
+  }
+  return true;
+}
+function runReport() {
+  if (validateReport()) {
+    const query = buildSqlQuery();
+    sqlConnection.then(db => {
+      let result = emptyQueryResult;
+      try {
+        result = db.exec(query)[0] || emptyQueryResult;
+        console.debug(result);
+      } catch (e) {
+        console.warn(e);
+      }
+      createTable(result.columns, result.values);
+    });
+  }
 }
 
 // Create a join between fields
