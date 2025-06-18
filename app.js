@@ -51,8 +51,12 @@ export function tableLabel(tableName) {
   return tableLabels[tableNames.indexOf(tableName)];
 }
 
+function tableField(fieldName, tableName) {
+  return tableSchemas[tableName].find(x => x.name === fieldName);
+}
+
 export function fieldLabel(fieldName, tableName) {
-  return tableSchemas[tableName].find(x => x.name === fieldName).label;
+  return tableField(fieldName, tableName).label;
 }
 
 // Initialize the app
@@ -198,7 +202,12 @@ function buildSqlQuery() {
     if (f.isRow) {
       groupFields.push(field);
     }
-    queryFields.push(field);
+    const agg = tableField(f.field, f.table).aggregator;
+    if (agg) {
+      queryFields.push(" " + agg.replace("VALUE", field.trim()));
+    } else {
+      queryFields.push(field);
+    }
   });
   let query = "SELECT\n";
   query += queryFields.join(",\n");
@@ -264,7 +273,12 @@ function runReport() {
       } catch (e) {
         console.warn(e);
       }
-      createTable(result.columns, result.values);
+      if (result.values.length === 0) {
+        tableContainer.innerHTML = '<div class="no-data">No data to display</div>';
+      } else {
+        const html = createTable(result.columns, result.values);
+        tableContainer.innerHTML = `<div class="table-container">${html}</div>`;
+      }
     });
   }
 }
@@ -315,32 +329,22 @@ function removeJoin(joinKey) {
 }
 
 function createTable(columns, values) {
-  if (values.length === 0) {
-    tableContainer.innerHTML = '<div class="no-data">No data to display</div>';
-    return;
-  }
-
   let html = '<table>';
-
-  // Create header
   html += '<thead><tr>';
-  columns.forEach(column => {
-    html += `<th>${escapeHtml(column)}</th>`;
+  columns.map(escapeHtml).forEach(column => {
+    html += `<th>${column}</th>`;
   });
   html += '</tr></thead>';
-
-  // Create body
   html += '<tbody>';
   values.forEach(row => {
     html += '<tr>';
-    row.forEach(cell => {
-      html += `<td>${escapeHtml(cell)}</td>`;
+    row.map(escapeHtml).forEach(cell => {
+      html += `<td>${cell}</td>`;
     });
     html += '</tr>';
   });
   html += '</tbody></table>';
-
-  tableContainer.innerHTML = `<div class="table-container">${html}</div>`;
+  return html;
 }
 
 function escapeHtml(value) {

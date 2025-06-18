@@ -38,16 +38,18 @@ export const tableSchemas = {
       type: "text"
     },
     {
-      name: "avg_talk_time",
+      name: "talk_time",
       label: "Average Talk Time",
       group: "metric",
-      type: "float"
+      type: "float",
+      aggregator: "AVG(VALUE)",
     },
     {
-      name: "avg_hold_time",
+      name: "hold_time",
       label: "Average Hold Time",
       group: "metric",
-      type: "float"
+      type: "float",
+      aggregator: "AVG(VALUE)",
     },
   ],
   "Queue Data": [ // table name = queue_data
@@ -70,22 +72,25 @@ export const tableSchemas = {
       type: "text"
     },
     {
-      name: "avg_wait_time",
-      label: "Time - Average Wait",
+      name: "wait_time",
+      label: "Average Wait Time",
       group: "metric",
-      type: "float"
+      type: "float",
+      aggregator: "AVG(VALUE)",
     },
     {
       name: "abandoned",
-      label: "Count - Abandoned",
+      label: "# Abandoned",
       group: "metric",
-      type: "int"
+      type: "int",
+      aggregator: "SUM(VALUE)",
     },
     {
       name: "answered",
-      label: "Count - Answered",
+      label: "# Answered",
       group: "metric",
-      type: "int"
+      type: "int",
+      aggregator: "SUM(VALUE)",
     },
   ],
   "Survey Data": [ // table name = survey_data
@@ -109,9 +114,10 @@ export const tableSchemas = {
     },
     {
       name: "csat",
-      label: "CSAT (1-5)",
+      label: "Average CSAT(1-5)",
       group: "metric",
-      type: "float"
+      type: "float",
+      aggregator: "AVG(VALUE)",
     },
   ],
   "Voice Analytics": [ // table name = voice_analytics
@@ -129,15 +135,17 @@ export const tableSchemas = {
     },
     {
       name: "sentiment",
-      label: "Sentiment (1-10)",
+      label: "Average Sentiment(1-10)",
       group: "metric",
-      type: "float"
+      type: "float",
+      aggregator: "AVG(VALUE)",
     },
     {
-      name: "pct_overtalk",
-      label: "Percent - Overtalk",
+      name: "overtalk",
+      label: "Average Overtalk %",
       group: "metric",
-      type: "float"
+      type: "float",
+      aggregator: "AVG(VALUE)",
     },
   ],
 };
@@ -153,7 +161,7 @@ sqlConnection.then(db => {
     date datetime,
     agent text,
     survey text,
-    csat int
+    csat decimal(10,2)
   );`);
   db.run(`CREATE TABLE conversation_data (
     date datetime,
@@ -161,22 +169,22 @@ sqlConnection.then(db => {
     agent text,
     next_party text,
     previous_party text,
-    avg_talk_time float,
-    avg_hold_time float
+    talk_time decimal(10,2),
+    hold_time decimal(10,2)
   );`);
   db.run(`CREATE TABLE queue_data (
     date datetime,
     answering_party text,
     queue text,
-    avg_wait_time float,
-    abandoned int,
-    answered int
+    wait_time decimal(10,2),
+    abandoned decimal(10,2),
+    answered decimal(10,2)
   );`);
   db.run(`CREATE TABLE voice_analytics (
     date datetime,
     agent text,
-    sentiment float,
-    pct_overtalk float
+    sentiment decimal(10,2),
+    overtalk decimal(10,2)
   );`);
   //
   // Conversation Data
@@ -200,7 +208,7 @@ sqlConnection.then(db => {
   //
   db.run(`
     INSERT INTO queue_data VALUES
-      ('2025-06-01', 'Alice',   'Customer Support',   125.4, 3,  6),
+      ('2025-06-01', 'Alice',   'Customer Support',   125.4, 3, 39),
       ('2025-06-02', 'Bob',     'Sales',              89.7,  1, 96),
       ('2025-06-03', 'Carol',   'Technical Support',  156.8, 5, 44),
       ('2025-06-04', 'Dave',    'Customer Support',   98.2,  2,  6),
@@ -226,7 +234,7 @@ sqlConnection.then(db => {
       ('2025-06-07', 'George',  'Post-Call Survey',     3.2),
       ('2025-06-08', 'Helen',   'Monthly Feedback',     4.6),
       ('2025-06-09', 'Ian',     'Post-Call Survey',     4.0),
-      ('2025-06-09', 'Dean',    'Post-Call Survey',     4.0),
+      ('2025-06-09', 'Dean',    'Post-Call Survey',     4.9),
       ('2025-06-10', 'Alice',   'Weekly Check-in',      4.4);
   `);
   //
