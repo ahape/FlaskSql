@@ -482,6 +482,10 @@ td {
   color: #374151;
 }
 
+td.warn-usage {
+  background-color: yellow;
+}
+
 tr:hover {
   background-color: #f8fafc;
 }

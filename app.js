@@ -329,6 +329,9 @@ function removeJoin(joinKey) {
 }
 
 function createTable(columns, values) {
+  // First, identify rows with duplicate numeric patterns
+  const duplicateRows = findRowsWithPossibleDuplicates(values);
+  
   let html = '<table>';
   html += '<thead><tr>';
   columns.map(escapeHtml).forEach(column => {
@@ -336,15 +339,64 @@ function createTable(columns, values) {
   });
   html += '</tr></thead>';
   html += '<tbody>';
-  values.forEach(row => {
+  
+  values.forEach((row, rowIndex) => {
+    const isDuplicateRow = duplicateRows.has(rowIndex);
     html += '<tr>';
+    
     row.map(escapeHtml).forEach(cell => {
-      html += `<td>${cell}</td>`;
+      let cellClass = '';
+      
+      // Add has-issue class for NULL values
+      if (cell === 'NULL' || isDuplicateRow) {
+        cellClass = 'has-issue';
+      }
+      
+      const classAttr = cellClass ? ` class="${cellClass}"` : '';
+      html += `<td${classAttr}>${cell}</td>`;
     });
     html += '</tr>';
   });
+  
   html += '</tbody></table>';
   return html;
+}
+
+// TODO this should actually look at inner-most row grouping
+// and detect duplicate values based on that
+function findRowsWithPossibleDuplicates(values) {
+  const rowsWithPossibleDuplicates = new Set();
+  const rowGroups = configuredFields.filter(f => f.isRow).length;
+  if (rowGroups === 0)
+    return rowsWithPossibleDuplicates;
+
+  const valueIndexes = configuredFields
+    .map((f, i) => f.group === "metric" ? i : -1)
+    .filter(f => f > -1);
+  let lastValues = [];
+  let lastKey = NaN;
+  values.forEach((row, rowIndex) => {
+    let currentKey = row[0];
+    // Check for a new row group (unintelligently)
+    if (lastKey !== currentKey) {
+      lastKey = currentKey;
+      lastValues = Array(values[0].length).fill(NaN)
+      // Cache our values for this first row of the new row group
+      valueIndexes.forEach(i => {
+        lastValues[i] = row[i];
+      });
+    } else {
+      // When this is a subsequent row w/in a row grouping
+      row.forEach((cell, colIndex) => {
+        if (valueIndexes.indexOf(colIndex) !== -1) {
+          if (cell === lastValues[colIndex]) {
+            rowsWithPossibleDuplicates.add(rowIndex);
+          }
+        }
+      });
+    }
+  });
+  return rowsWithPossibleDuplicates;
 }
 
 function escapeHtml(value) {
