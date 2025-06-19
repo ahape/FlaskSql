@@ -1,6 +1,3 @@
-/*
- vim:ts=2 sw=2
-*/
 import { sqlConnection, tableNames, tableLabels, tableSchemas } from "./tables.js";
 import { showLinkModal } from "./linkModal.js";
 import { setupDragAndDrop } from "./dragAndDrop.js";

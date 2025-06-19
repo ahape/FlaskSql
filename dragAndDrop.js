@@ -1,6 +1,3 @@
-/*
- vim:ts=2 sw=2
-*/
 import { removeFromConfigured, addToConfigured } from "./app.js";
 
 let draggedElement = null;

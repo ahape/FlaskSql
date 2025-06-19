@@ -1,6 +1,3 @@
-/*
- vim:ts=2 sw=2
-*/
 import { tableSchemas, tableNames } from "./tables.js";
 import { tableLabel, fieldLabel, handleStateChange, getAvailableJoinTargets, configuredFields, joins } from "./app.js";
 

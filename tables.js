@@ -1,6 +1,3 @@
-/*
- vim:ts=2 sw=2
-*/
 export const sqlConnection = initSqlJs({
   locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
 }).then(SQL => new SQL.Database());
