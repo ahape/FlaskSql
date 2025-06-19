@@ -22,6 +22,7 @@ export function setupDragAndDrop() {
 
   // Delegate drag start events
   document.addEventListener("dragstart", (e) => {
+    if (isNotElement(e.target)) return;
     if (e.target.classList.contains("field-item")) {
       draggedElement = e.target;
       draggedFromContainer = e.target.closest(".field-list");
@@ -33,6 +34,7 @@ export function setupDragAndDrop() {
   });
 
   document.addEventListener("dragend", (e) => {
+    if (isNotElement(e.target)) return;
     if (e.target.classList.contains("field-item")) {
       e.target.classList.remove("dragging");
       hideDropIndicator();
@@ -184,5 +186,6 @@ export function insertAtIndex(container, element, index) {
   }
 }
 
-
-// sort by each thing in rows, in order (...<->)
+function isNotElement(target) {
+  return target == null || target.nodeType !== 1;
+}
