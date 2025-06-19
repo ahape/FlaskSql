@@ -482,8 +482,12 @@ td {
   color: #374151;
 }
 
-td.has-issue {
-  background-color: yellow;
+td.warn {
+  background-color: #ffde21;
+}
+td.warn em {
+  text-decoration: underline;
+  cursor: help;
 }
 
 tr:hover {

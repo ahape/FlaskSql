@@ -192,18 +192,30 @@ function updateConfiguredList() {
 
 function buildSqlQuery() {
   const primaryTable = configuredFields[0].table;
+  const reportConfig = {
+    rows: [], cols: [], vals: [],
+  };
   const queryFields = [];
   const groupFields = [];
   configuredFields.forEach(f => {
-    const field = ` ${f.table}.${f.field}`;
+    const field = `${f.table}.${f.field}`;
     if (f.isRow) {
-      groupFields.push(field);
+      groupFields.push(" " + field);
     }
     const agg = tableField(f.field, f.table).aggregator;
     if (agg) {
-      queryFields.push(" " + agg.replace("VALUE", field.trim()));
+      reportConfig.vals.push(field);
+      queryFields.push(" " + agg.replace("VALUE", field));
+    } else if (!f.isRow) {
+      reportConfig.cols.push(field);
+      queryFields.push(` CASE
+  WHEN COUNT(DISTINCT(${field})) = 1
+  THEN ${field}
+  ELSE "warn3"
+ END AS ${field.replace(".","$")}`);
     } else {
-      queryFields.push(field);
+      reportConfig.rows.push(field);
+      queryFields.push(" " + field);
     }
   });
   let query = "SELECT\n";
@@ -228,6 +240,7 @@ function buildSqlQuery() {
     query += `\nGROUP BY${groupFields}`;
     query += `\nORDER BY${groupFields} DESC`;
   }
+  console.debug(JSON.stringify(reportConfig, null, 2));
   console.debug(query);
   return query;
 }
@@ -239,26 +252,29 @@ function validateReport() {
     tableContainer.innerHTML = '<div class="no-data">No rows, columns, or values configured</div>';
     return false;
   }
-  /*
-  if (!configuredFields.some(f => f.group === "metric")) {
-    tableContainer.innerHTML = '<div class="no-data">Report must contain at least one value (metric)</div>';
+  if (configuredFields.filter(f => f.isRow).length === 0) {
+    tableContainer.innerHTML = '<div class="no-data">Report must contain at least one row</div>';
     return false;
   }
-  */
-  const fieldsByTable = configuredFields.reduce((agg, cur) => {
-    (agg[cur.table] ||= []).push(cur);
-    return agg;
-  }, {});
-
-  const tableWithoutMetric = Object.keys(fieldsByTable).find(table => {
-    return !fieldsByTable[table].some(f => f.group === "metric");
-  });
-  if (tableWithoutMetric) {
-    tableContainer.innerHTML = `<div class="no-data">Report must contain at least one value (metric) from ${tableLabel(tableWithoutMetric)} </div>`;
+  const table = findTableWithoutMetric();
+  if (table) {
+    tableContainer.innerHTML = `<div class="no-data">Report must contain at least one value (metric) from ${table}</div>`;
     return false;
   }
   return true;
 }
+
+function findTableWithoutMetric() {
+  const fieldsByTable = configuredFields.reduce((agg, cur) => {
+    (agg[cur.table] ||= []).push(cur);
+    return agg;
+  }, {});
+  const table = Object.keys(fieldsByTable).find(table => {
+    return !fieldsByTable[table].some(f => f.group === "metric");
+  });
+  return table ? tableLabel(table) : "";
+}
+
 function runReport() {
   if (validateReport()) {
     const query = buildSqlQuery();
@@ -325,10 +341,14 @@ function removeJoin(joinKey) {
   joins = joins.filter(j => j.key !== joinKey);
 }
 
+const warn1tooltip = `Data was not found in one of the joined tables`;
+const warn2tooltip = `Table 1's grouping is too fine, causing table 2's values to be duplicated across multiple rows`;
+const warn3tooltip = `Table 1’s grouping is too broad, forcing Table 2 to combine (non-aggregable) text columns`;
+
 function createTable(columns, values) {
   // First, identify rows with duplicate numeric patterns
   const duplicates = findPossibleDuplicateCells(values);
-  
+
   let html = '<table>';
   html += '<thead><tr>';
   columns.map(escapeHtml).forEach(column => {
@@ -336,27 +356,25 @@ function createTable(columns, values) {
   });
   html += '</tr></thead>';
   html += '<tbody>';
-  
+
   values.forEach((row, rowIndex) => {
     html += '<tr>';
-    
+
     row.map(escapeHtml).forEach((cell, colIndex) => {
-      let cellClass = '';
-
-      if (duplicates.has(String([rowIndex, colIndex]))) {
-        cell = "NULL";
+      if (cell == null) {
+        cell = `<em title="${warn1tooltip}">WARN</em><sup>1</sup>`;
+      } else if (duplicates.has(String([rowIndex, colIndex]))) {
+        cell = `<em title="${warn2tooltip}">WARN</em><sup>2</sup>`;
+      } else if (cell === "warn3") {
+        cell = `<em title="${warn3tooltip}">WARN</em><sup>3</sup>`;
       }
 
-      if (cell === "NULL") {
-        cellClass = 'has-issue';
-      }
-      
-      const classAttr = cellClass ? ` class="${cellClass}"` : '';
+      const classAttr = cell.includes("WARN") ? ` class="warn"` : '';
       html += `<td${classAttr}>${cell}</td>`;
     });
     html += '</tr>';
   });
-  
+
   html += '</tbody></table>';
   return html;
 }
@@ -390,7 +408,7 @@ function findPossibleDuplicateCells(values) {
 }
 
 function escapeHtml(value) {
-  if (value == null) return "NULL";
+  if (value == null) return null;
   const text = String(value);
   const div = document.createElement('div');
   div.textContent = text;
