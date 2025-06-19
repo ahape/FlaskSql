@@ -231,8 +231,8 @@ sqlConnection.then(db => {
       ('2025-06-07', 'George',  'Post-Call Survey',     3.2),
       ('2025-06-08', 'Helen',   'Monthly Feedback',     4.6),
       ('2025-06-09', 'Ian',     'Post-Call Survey',     4.0),
-      ('2025-06-09', 'Dean',    'Post-Call Survey',     4.9),
-      ('2025-06-10', 'Alice',   'Weekly Check-in',      4.4);
+      ('2025-06-09', 'Dean',    'Post-Call Survey',     7.9),
+      ('2025-06-10', 'Alice',   'Weekly Check-in',     14.4);
   `);
   //
   // Voice Analytics

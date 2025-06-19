@@ -327,7 +327,7 @@ function removeJoin(joinKey) {
 
 function createTable(columns, values) {
   // First, identify rows with duplicate numeric patterns
-  const duplicateRows = findRowsWithPossibleDuplicates(values);
+  const duplicates = findPossibleDuplicateCells(values);
   
   let html = '<table>';
   html += '<thead><tr>';
@@ -338,14 +338,16 @@ function createTable(columns, values) {
   html += '<tbody>';
   
   values.forEach((row, rowIndex) => {
-    const isDuplicateRow = duplicateRows.has(rowIndex);
     html += '<tr>';
     
-    row.map(escapeHtml).forEach(cell => {
+    row.map(escapeHtml).forEach((cell, colIndex) => {
       let cellClass = '';
-      
-      // Add has-issue class for NULL values
-      if (cell === 'NULL' || isDuplicateRow) {
+
+      if (duplicates.has(String([rowIndex, colIndex]))) {
+        cell = "NULL";
+      }
+
+      if (cell === "NULL") {
         cellClass = 'has-issue';
       }
       
@@ -359,41 +361,32 @@ function createTable(columns, values) {
   return html;
 }
 
-// TODO this should actually look at inner-most row grouping
-// and detect duplicate values based on that
-function findRowsWithPossibleDuplicates(values) {
-  const rowsWithPossibleDuplicates = new Set();
+function findPossibleDuplicateCells(values) {
+  const duplicateCells = new Set();
   const rowGroups = configuredFields.filter(f => f.isRow).length;
   if (rowGroups === 0)
-    return rowsWithPossibleDuplicates;
+    return duplicateCells;
 
-  const valueIndexes = configuredFields
+  const valueIndexValues = configuredFields
     .map((f, i) => f.group === "metric" ? i : -1)
-    .filter(f => f > -1);
-  let lastValues = [];
-  let lastKey = NaN;
+    .filter(f => f > -1)
+    .reduce((agg, curIndex) => {
+      agg.set(curIndex, new Set());
+      return agg;
+    }, new Map());
+
   values.forEach((row, rowIndex) => {
-    let currentKey = row[0];
-    // Check for a new row group (unintelligently)
-    if (lastKey !== currentKey) {
-      lastKey = currentKey;
-      lastValues = Array(values[0].length).fill(NaN)
-      // Cache our values for this first row of the new row group
-      valueIndexes.forEach(i => {
-        lastValues[i] = row[i];
-      });
-    } else {
-      // When this is a subsequent row w/in a row grouping
-      row.forEach((cell, colIndex) => {
-        if (valueIndexes.indexOf(colIndex) !== -1) {
-          if (cell === lastValues[colIndex]) {
-            rowsWithPossibleDuplicates.add(rowIndex);
-          }
+    row.forEach((cell, colIndex) => {
+      const existing = valueIndexValues.get(colIndex)
+      if (existing) {
+        if (existing.has(cell)) {
+          duplicateCells.add(String([rowIndex, colIndex]));
         }
-      });
-    }
+        existing.add(cell);
+      }
+    });
   });
-  return rowsWithPossibleDuplicates;
+  return duplicateCells;
 }
 
 function escapeHtml(value) {

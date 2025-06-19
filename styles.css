@@ -482,7 +482,7 @@ td {
   color: #374151;
 }
 
-td.warn-usage {
+td.has-issue {
   background-color: yellow;
 }
 
