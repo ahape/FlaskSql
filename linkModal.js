@@ -95,7 +95,6 @@ function executeJoin(leftField, leftTable, rightField, rightTable) {
     rightTable: rightTable,
     rightField: rightField
   };
-
   joins.push(join);
   handleStateChange();
 }

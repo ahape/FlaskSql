@@ -10,38 +10,47 @@ export const availableList = document.getElementById("availableList");
 export const configuredRows = document.getElementById("configuredList-rows");
 export const configuredCols = document.getElementById("configuredList-cols");
 
-// Add field to configured list
 export function addToConfigured(fieldName, tableName, fieldGroup, isRow, insertIndex = -1) {
   const exists = configuredFields.some(f => f.field === fieldName && f.table === tableName);
   if (exists) return;
 
-  const field = { field: fieldName, table: tableName, group: fieldGroup, isRow };
-
+  const field = {
+    field: fieldName,
+    table: tableName,
+    group: fieldGroup,
+    isRow,
+  };
   if (insertIndex > -1) {
     configuredFields.splice(insertIndex, 0, field);
   } else {
     configuredFields.push(field);
   }
-  updateConfiguredList();
+  handleStateChange();
 }
 
-// Remove field from configured list
 export function removeFromConfigured(fieldName, tableName, isSamePanel) {
-  const toRemove = configuredFields.find(f => f.field === fieldName && f.table === tableName);
+  const toRemove = findConfiguredField(fieldName, tableName);
   if (!toRemove) return;
   configuredFields.splice(configuredFields.indexOf(toRemove), 1);
   if (!isSamePanel) {
-    const existingJoin = joins.find(j => isFieldBeingJoined(j, fieldName, tableName));
+    const existingJoin = findJoin(fieldName, tableName);
     if (existingJoin) {
       removeJoin(existingJoin.key);
     }
   }
-  updateConfiguredList();
+  handleStateChange();
 }
 
+// If configuredFields or joins is modified, this needs to be triggered
 export function handleStateChange() {
+  updateConfiguredList();
+  updateAvailableFields();
   stylizeJoinedElements();
   runReport();
+}
+
+function findConfiguredField(fieldName, tableName) {
+  return configuredFields.find(f => f.field === fieldName && f.table === tableName);
 }
 
 export function tableLabel(tableName) {
@@ -77,7 +86,15 @@ function setupDataSourceSelect() {
 // Update available fields based on selected data source
 function updateAvailableFields() {
   const selectedTable = dataSourceSelect.value;
-  const fields = tableSchemas[selectedTable];
+  const fields = tableSchemas[selectedTable].filter(f => {
+    if (findConfiguredField(f.name, selectedTable)) {
+      return false;
+    }
+    if (findJoin(f.name, selectedTable)) {
+      return false;
+    }
+    return true;
+  });
 
   availableList.innerHTML = "";
 
@@ -180,24 +197,32 @@ function updateConfiguredList() {
         configuredCols.appendChild(fieldElement);
       }
     });
-    configuredFields.sort((a, b) => {
-      if (a.isRow && b.isRow) return 0;
-      if (a.isRow) return -1;
-      if (b.isRow) return 1;
-      if (!a.isRow && !b.isRow) return 0;
-    });
   }
-  handleStateChange();
+}
+
+function prepareQueryFields() {
+  const fields = configuredFields.slice(0);
+  fields.sort((a, b) => {
+    if (a.isRow && b.isRow) return 0;
+    if (a.isRow) return -1;
+    if (b.isRow) return 1;
+    if (!a.isRow && !b.isRow) return 0;
+  });
+  return fields;
 }
 
 function buildSqlQuery() {
-  const primaryTable = configuredFields[0].table;
+  const primaryTable = (
+    configuredFields.find(f => findJoin(f.field, f.table)) ||
+    configuredFields[0]
+  ).table;
+  const fields = prepareQueryFields();
   const reportConfig = {
     rows: [], cols: [], vals: [],
   };
   const queryFields = [];
   const groupFields = [];
-  configuredFields.forEach(f => {
+  fields.forEach(f => {
     const field = `${f.table}.${f.field}`;
     if (f.isRow) {
       groupFields.push(" " + field);
@@ -280,13 +305,17 @@ function runReport() {
     const query = buildSqlQuery();
     sqlConnection.then(db => {
       let result = emptyQueryResult;
+      let isJoinRequired = false;
       try {
         result = db.exec(query)[0] || emptyQueryResult;
         console.debug(result);
       } catch (e) {
         console.warn(e);
+        isJoinRequired = e.message.includes("no such column");
       }
-      if (result.values.length === 0) {
+      if (isJoinRequired) {
+        tableContainer.innerHTML = '<div class="no-data">You must choose a <strong>link</strong> between tables</div>';
+      } else if (result.values.length === 0) {
         tableContainer.innerHTML = '<div class="no-data">No data to display</div>';
       } else {
         const html = createTable(result.columns, result.values);
@@ -298,7 +327,7 @@ function runReport() {
 
 // Create a join between fields
 function createJoin(fieldName, tableName) {
-  const sourceField = tableSchemas[tableName].find(f => f.name === fieldName);
+  const sourceField = tableField(fieldName, tableName);
   const availableTargets = getAvailableJoinTargets(sourceField, tableName);
 
   if (availableTargets.length === 0) {
@@ -329,6 +358,10 @@ function stylizeJoinedElements() {
       field.element.querySelector(".field-name").textContent = `${leftTable}.${leftField} = ${rightTable}.${rightField}`;
     }
   });
+}
+
+function findJoin(fieldName, tableName) {
+  return joins.find(j => isFieldBeingJoined(j, fieldName, tableName));
 }
 
 function isFieldBeingJoined(join, fieldName, tableName) {
@@ -381,11 +414,12 @@ function createTable(columns, values) {
 
 function findPossibleDuplicateCells(values) {
   const duplicateCells = new Set();
-  const rowGroups = configuredFields.filter(f => f.isRow).length;
+  const reportLayout = prepareQueryFields();
+  const rowGroups = reportLayout.filter(f => f.isRow).length;
   if (rowGroups === 0)
     return duplicateCells;
 
-  const valueIndexValues = configuredFields
+  const valueIndexValues = reportLayout
     .map((f, i) => f.group === "metric" ? i : -1)
     .filter(f => f > -1)
     .reduce((agg, curIndex) => {
