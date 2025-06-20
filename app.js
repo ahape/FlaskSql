@@ -33,8 +33,8 @@ export function removeFromConfigured(fieldName, tableName, isSamePanel) {
   if (!toRemove) return;
   configuredFields.splice(configuredFields.indexOf(toRemove), 1);
   if (!isSamePanel) {
-    const existingJoin = findJoin(fieldName, tableName);
-    if (existingJoin) {
+    let existingJoin = null;
+    while (existingJoin = findJoin(fieldName, tableName)) {
       removeJoin(existingJoin);
     }
   }
@@ -106,19 +106,18 @@ function updateAvailableFields() {
 
 export function getAvailableJoinTargets(sourceField, sourceTableName) {
   const targets = [];
-
   // Get all fields from all other data sources (tables)
   tableNames.forEach(tableName => {
     if (tableName !== sourceTableName &&
         configuredFields.some(f => f.table === tableName))
     {
-      tableSchemas[tableName].forEach(field => {
-        targets.push({
-          field: field.name,
+      tableSchemas[tableName]
+        .filter(({ name }) => !findJoin(name, tableName))
+        .forEach(({ name, group }) => targets.push({
+          field: name,
           table: tableName,
-          group: field.group,
-        });
-      });
+          group,
+        }));
     }
   });
   targets.sort((a, b) => a.field.localeCompare(b.field));
@@ -218,7 +217,7 @@ function buildSqlQuery() {
   ).table;
   const fields = prepareQueryFields();
   const reportConfig = {
-    rows: [], cols: [], vals: [],
+    rows: [], cols: [], vals: [], joins: [],
   };
   const queryFields = [];
   const groupFields = [];
@@ -255,7 +254,9 @@ function buildSqlQuery() {
       { table: j.leftTable, field: j.leftField } :
       { table: j.rightTable, field: j.rightField };
     const criteria = (tableJoins[left.table] ||= []);
-    criteria.push(`${left.table}.${left.field} = ${right.table}.${right.field}`);
+    const criterion = `${left.table}.${left.field} = ${right.table}.${right.field}`;
+    reportConfig.joins.push(criterion);
+    criteria.push(criterion);
   });
   Object.keys(tableJoins).forEach(tableName => {
     const criteria = tableJoins[tableName].join("\n AND ");
@@ -348,17 +349,29 @@ function stylizeJoinedElements() {
     element.querySelector(".field-name").textContent = fieldLabel(field.field, field.table);
     return { field, element }
   });
+  const fieldNameEls = new Map();
   joins.forEach(join => {
-    const field = configuredData.find(d =>
-      isFieldBeingJoined(join, d.field.field, d.field.table));
-    if (field) {
-      field.element.classList.add("join-item");
-      const leftTable = tableLabel(join.leftTable);
-      const rightTable = tableLabel(join.rightTable);
-      const leftField = fieldLabel(join.leftField, join.leftTable);
-      const rightField = fieldLabel(join.rightField, join.rightTable);
-      field.element.querySelector(".field-name").textContent = `${leftTable}.${leftField} = ${rightTable}.${rightField}`;
-    }
+    configuredData
+      .filter(({ field }) => isFieldBeingJoined(join, field.field, field.table))
+      .forEach(({ element }) => {
+        element.classList.add("join-item");
+        const leftTable = tableLabel(join.leftTable);
+        const rightTable = tableLabel(join.rightTable);
+        const leftField = fieldLabel(join.leftField, join.leftTable);
+        const rightField = fieldLabel(join.rightField, join.rightTable);
+
+        let textContent = "";
+        let textEl = fieldNameEls.get(element);
+        if (textEl) {
+          textContent = textEl.textContent + " AND ";
+        } else {
+          textEl = element.querySelector(".field-name");
+          textEl.textContent = "";
+          fieldNameEls.set(element, textEl);
+        }
+        textEl.textContent = textContent +
+          `${leftTable}.${leftField} = ${rightTable}.${rightField}`;
+      });
   });
 }
 
