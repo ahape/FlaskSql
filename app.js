@@ -35,7 +35,7 @@ export function removeFromConfigured(fieldName, tableName, isSamePanel) {
   if (!isSamePanel) {
     const existingJoin = findJoin(fieldName, tableName);
     if (existingJoin) {
-      removeJoin(existingJoin.key);
+      removeJoin(existingJoin);
     }
   }
   handleStateChange();
@@ -310,8 +310,10 @@ function runReport() {
         result = db.exec(query)[0] || emptyQueryResult;
         console.debug(result);
       } catch (e) {
-        console.warn(e);
         isJoinRequired = e.message.includes("no such column");
+        if (!isJoinRequired) {
+          console.warn(e);
+        }
       }
       if (isJoinRequired) {
         tableContainer.innerHTML = '<div class="no-data">You must choose a <strong>link</strong> between tables</div>';
@@ -369,14 +371,13 @@ function isFieldBeingJoined(join, fieldName, tableName) {
          (join.rightField === fieldName && join.rightTable === tableName);
 }
 
-// Remove a join
-function removeJoin(joinKey) {
-  joins = joins.filter(j => j.key !== joinKey);
+function removeJoin(join) {
+  joins = joins.filter(j => j !== join);
 }
 
 const warn1tooltip = `Data was not found in one of the joined tables`;
-const warn2tooltip = `Table 1's grouping is too fine, causing table 2's values to be duplicated across multiple rows`;
-const warn3tooltip = `Table 1’s grouping is too broad, forcing Table 2 to combine (non-aggregable) text columns`;
+const warn2tooltip = `Table 1's grouping is too granular, causing Table 2's values to be duplicated across multiple rows`;
+const warn3tooltip = `Table 1's grouping is too broad, forcing Table 2 to combine (non-aggregable) text columns`;
 
 function createTable(columns, values) {
   // First, identify rows with duplicate numeric patterns
