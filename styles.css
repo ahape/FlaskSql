@@ -497,3 +497,36 @@ tr:hover {
 tr:last-child td {
   border-bottom: none;
 }
+
+.tooltip-trigger {
+  display: inline-block;
+  padding: 10px 15px;
+  margin: 10px;
+  background: #007bff;
+  color: white;
+  border-radius: 5px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.tooltip-trigger:hover {
+  background: #0056b3;
+}
+
+.tooltip {
+  position: absolute;
+  background: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  white-space: pre-line;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.tooltip.show {
+  opacity: 1;
+}

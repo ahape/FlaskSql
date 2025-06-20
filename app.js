@@ -1,6 +1,7 @@
 import { sqlConnection, tableNames, tableLabels, tableSchemas } from "./tables.js";
 import { showLinkModal } from "./linkModal.js";
 import { setupDragAndDrop } from "./dragAndDrop.js";
+import "./tooltip.js"
 
 export let configuredFields = [];
 export let joins = [];
@@ -343,36 +344,42 @@ function createJoin(fieldName, tableName) {
 
 function stylizeJoinedElements() {
   const configuredData = configuredFields.map(field => {
-    const dataSelector = `[data-field="${field.field}"][data-table="${field.table}"]`;
-    const element = document.body.querySelector(`#configuredList-rows ${dataSelector}, #configuredList-cols ${dataSelector}`);
+    const childSelector = `[data-field="${field.field}"][data-table="${field.table}"]`;
+    const element = document.body.querySelector(`
+      #configuredList-rows ${childSelector},
+      #configuredList-cols ${childSelector}`);
+    // Reset style (no join styling)
     element.classList.remove("join-item");
-    element.querySelector(".field-name").textContent = fieldLabel(field.field, field.table);
+    // Reset label back to default
+    labelEl(element).textContent = fieldLabel(field.field, field.table);
     return { field, element }
   });
-  const fieldNameEls = new Map();
+
+  const joinData = new Map();
   joins.forEach(join => {
     configuredData
       .filter(({ field }) => isFieldBeingJoined(join, field.field, field.table))
-      .forEach(({ element }) => {
+      .forEach(({ element, field }) => {
         element.classList.add("join-item");
+
         const leftTable = tableLabel(join.leftTable);
         const rightTable = tableLabel(join.rightTable);
         const leftField = fieldLabel(join.leftField, join.leftTable);
         const rightField = fieldLabel(join.rightField, join.rightTable);
 
-        let textContent = "";
-        let textEl = fieldNameEls.get(element);
-        if (textEl) {
-          textContent = textEl.textContent + " AND ";
-        } else {
-          textEl = element.querySelector(".field-name");
-          textEl.textContent = "";
-          fieldNameEls.set(element, textEl);
-        }
-        textEl.textContent = textContent +
-          `${leftTable}.${leftField} = ${rightTable}.${rightField}`;
+        const conditions = joinData.get(element) || [];
+        conditions.push(`${leftTable}.${leftField} = ${rightTable}.${rightField}`);
+        joinData.set(element, conditions);
+
+        const label = fieldLabel(field.field, field.table);
+        const tooltip = `<strong data-tooltip="${conditions.join("<br />")}">(+${conditions.length})</strong>`
+        labelEl(element).innerHTML = label + " " + tooltip;
       });
   });
+
+  function labelEl(element) {
+    return element.querySelector(".field-name");
+  }
 }
 
 function findJoin(fieldName, tableName) {
