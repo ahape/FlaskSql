@@ -136,6 +136,8 @@ function handleDrop(e) {
   const tableName = draggedElement.dataset.table;
   const fieldGroup = draggedElement.dataset.group;
   const targetItem = e.target.closest(".field-item");
+  // Hacky way of checking if the field is moving from one configured container
+  // to another configured container (and not going back to available)
   const isSamePanel = targetList.id.substr(9) === draggedFromContainer.id.substr(9);
   // Remove from current configured state
   removeFromConfigured(fieldName, tableName, isSamePanel);

@@ -33,12 +33,18 @@ export function removeFromConfigured(fieldName, tableName, isSamePanel) {
   const toRemove = findConfiguredField(fieldName, tableName);
   if (!toRemove) return;
   configuredFields.splice(configuredFields.indexOf(toRemove), 1);
+  // Handle removing joins EXPLICITLY (the joining field is being removed)
   if (!isSamePanel) {
     let existingJoin = null;
     while (existingJoin = findJoin(fieldName, tableName)) {
       removeJoin(existingJoin);
     }
   }
+  // Handle removing joins IMPLICITLY (the last metric field is being removed)
+  const orphanedJoins = joins.filter(j =>
+    !configuredFields.some(f => f.table === j.leftTable) ||
+    !configuredFields.some(f => f.table === j.rightTable));
+  orphanedJoins.forEach(removeJoin);
   handleStateChange();
 }
 
@@ -400,20 +406,14 @@ const warn2tooltip = `Table 1's grouping is too granular, causing Table 2's valu
 const warn3tooltip = `Table 1's grouping is too broad, forcing Table 2 to combine (non-aggregable) text columns`;
 
 function createTable(columns, values) {
-  // First, identify rows with duplicate numeric patterns
   const duplicates = findPossibleDuplicateCells(values);
-
-  let html = '<table>';
-  html += '<thead><tr>';
+  let html = '<table><thead><tr>';
   columns.map(escapeHtml).forEach(column => {
     html += `<th>${column}</th>`;
   });
-  html += '</tr></thead>';
-  html += '<tbody>';
-
+  html += '</tr></thead><tbody>';
   values.forEach((row, rowIndex) => {
     html += '<tr>';
-
     row.map(escapeHtml).forEach((cell, colIndex) => {
       if (cell == null) {
         cell = `<em title="${warn1tooltip}">WARN</em><sup>1</sup>`;
@@ -422,15 +422,12 @@ function createTable(columns, values) {
       } else if (cell === "warn3") {
         cell = `<em title="${warn3tooltip}">WARN</em><sup>3</sup>`;
       }
-
       const classAttr = cell.includes("WARN") ? ` class="warn"` : '';
       html += `<td${classAttr}>${cell}</td>`;
     });
     html += '</tr>';
   });
-
-  html += '</tbody></table>';
-  return html;
+  return html + '</tbody></table>';
 }
 
 function findPossibleDuplicateCells(values) {
