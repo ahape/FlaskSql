@@ -187,23 +187,20 @@ function createFieldElement(fieldName, tableName, fieldGroup, showActions = fals
   return fieldDiv;
 }
 
+const emptyConfiguredListHtml = `<div class="empty-state">Drag fields here to configure your query</div>`;
+
 // Update the configured fields display
 function updateConfiguredList() {
-  if (configuredFields.length === 0) {
-    configuredRows.innerHTML = `<div class="empty-state">Drag fields here to configure your query</div>`;
-    configuredCols.innerHTML = `<div class="empty-state">Drag fields here to configure your query</div>`;
-  } else {
-    configuredRows.innerHTML = "";
-    configuredCols.innerHTML = "";
-    configuredFields.forEach(field => {
-      const fieldElement = createFieldElement(field.field, field.table, field.group, true);
-      if (field.isRow) {
-        configuredRows.appendChild(fieldElement);
-      } else {
-        configuredCols.appendChild(fieldElement);
-      }
-    });
-  }
+  configuredCols.innerHTML = configuredRows.innerHTML = emptyConfiguredListHtml;
+  configuredFields.forEach(field => {
+    const fieldElement = createFieldElement(field.field, field.table, field.group, true);
+    const container = field.isRow ? configuredRows : configuredCols;
+    const placeholder = container.querySelector(".empty-state");
+    if (placeholder) {
+      container.removeChild(placeholder);
+    }
+    container.appendChild(fieldElement);
+  });
 }
 
 function prepareQueryFields() {
