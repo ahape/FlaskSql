@@ -448,11 +448,12 @@ function findPossibleDuplicateCells(values) {
   values.forEach((row, rowIndex) => {
     row.forEach((cell, colIndex) => {
       const existing = valueIndexValues.get(colIndex)
-      if (existing) {
-        if (existing.has(cell)) {
+      if (existing && cell != null) {
+        const key = String(cell);
+        if (existing.has(key)) {
           duplicateCells.add(String([rowIndex, colIndex]));
         }
-        existing.add(cell);
+        existing.add(key);
       }
     });
   });

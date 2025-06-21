@@ -278,7 +278,7 @@ h1 {
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(5px);
   display: flex;
-  align-items: center;
+  align-items: start;
   justify-content: center;
   z-index: 1000;
   opacity: 0;
@@ -295,6 +295,7 @@ h1 {
   background: white;
   border-radius: 20px;
   padding: 30px;
+  margin-top: 100px;
   max-width: 500px;
   width: 90%;
   max-height: 60vh;
