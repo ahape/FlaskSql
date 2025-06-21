@@ -53,20 +53,25 @@ export class Tooltip {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 
-    let x = event.clientX;
-    let y = event.clientY - tooltipRect.height - 10; // 10px offset above cursor
+    // Use pageX/pageY to account for scroll position
+    let x = event.pageX;
+    let y = event.pageY - tooltipRect.height - 10; // 10px offset above cursor
 
     // Adjust horizontal position if tooltip would go off-screen
-    if (x + tooltipRect.width > viewportWidth) {
-      x = viewportWidth - tooltipRect.width - 10;
+    // Need to account for scroll when checking viewport bounds
+    const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+    const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+    if (x + tooltipRect.width > scrollX + viewportWidth) {
+      x = scrollX + viewportWidth - tooltipRect.width - 10;
     }
-    if (x < 10) {
-      x = 10;
+    if (x < scrollX + 10) {
+      x = scrollX + 10;
     }
 
     // If tooltip would go above viewport, show it below cursor instead
-    if (y < 10) {
-      y = event.clientY + 10;
+    if (y < scrollY + 10) {
+      y = event.pageY + 10;
     }
 
     this.tooltip.style.left = x + 'px';

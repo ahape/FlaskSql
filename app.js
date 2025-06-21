@@ -413,11 +413,11 @@ function createTable(columns, values) {
     html += '<tr>';
     row.map(escapeHtml).forEach((cell, colIndex) => {
       if (cell == null) {
-        cell = `<em title="${warn1tooltip}">WARN</em><sup>1</sup>`;
+        cell = `<em data-tooltip="${warn1tooltip}">WARN</em><sup>1</sup>`;
       } else if (duplicates.has(String([rowIndex, colIndex]))) {
-        cell = `<em title="${warn2tooltip}">WARN</em><sup>2</sup>`;
+        cell = `<em data-tooltip="${warn2tooltip}">WARN</em><sup>2</sup>`;
       } else if (cell === "warn3") {
-        cell = `<em title="${warn3tooltip}">WARN</em><sup>3</sup>`;
+        cell = `<em data-tooltip="${warn3tooltip}">WARN</em><sup>3</sup>`;
       }
       const classAttr = cell.includes("WARN") ? ` class="warn"` : '';
       html += `<td${classAttr}>${cell}</td>`;
