@@ -77,7 +77,7 @@ h1 {
   border-radius: 2px;
 }
 
-.data-source-dropdown {
+.dropdown {
   padding: 10px 15px;
   border: 2px solid #e1e5e9;
   border-radius: 10px;
@@ -89,11 +89,11 @@ h1 {
   min-width: 150px;
 }
 
-.data-source-dropdown:hover {
+.dropdown:hover {
   border-color: #667eea;
 }
 
-.data-source-dropdown:focus {
+.dropdown:focus {
   outline: none;
   border-color: #667eea;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);

@@ -15,7 +15,7 @@
       <div class="list-section">
         <div class="section-header">
           <div class="section-title">Available Fields</div>
-          <select class="data-source-dropdown" id="dataSourceSelect"></select>
+          <select class="dropdown" id="dataSourceSelect"></select>
         </div>
         <div class="field-list" id="availableList"></div>
       </div>
@@ -37,7 +37,13 @@
     </div>
 
     <div class="report-section">
-      <div class="report-title">Report</div>
+      <div class="section-header">
+        <div class="report-title">Report</div>
+        <div>
+          <select class="dropdown" id="savedReportSelect"></select>
+          <button class="dropdown" style="min-width: auto" id="saveReportButton">Save</button>
+        </div>
+      </div>
       <div id="tableContainer">
         <div class="table-container"></div>
       </div>

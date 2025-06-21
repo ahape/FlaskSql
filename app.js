@@ -7,9 +7,12 @@ export let configuredFields = [];
 export let joins = [];
 export const tableContainer = document.getElementById('tableContainer');
 export const dataSourceSelect = document.getElementById("dataSourceSelect");
+export const savedReportSelect = document.getElementById("savedReportSelect");
+export const saveReportButton = document.getElementById("saveReportButton");
 export const availableList = document.getElementById("availableList");
 export const configuredRows = document.getElementById("configuredList-rows");
 export const configuredCols = document.getElementById("configuredList-cols");
+const localStorageKey = "__xdatademo__";
 
 export function addToConfigured(fieldName, tableName, fieldGroup, isRow, insertIndex = -1) {
   const exists = configuredFields.some(f => f.field === fieldName && f.table === tableName);
@@ -75,8 +78,47 @@ export function fieldLabel(fieldName, tableName) {
 // Initialize the app
 function init() {
   setupDataSourceSelect();
+  setupSavedReportSelect();
   setupDragAndDrop();
   updateAvailableFields();
+  saveReportButton.onclick = saveReport;
+}
+
+function setupSavedReportSelect() {
+  savedReportSelect.addEventListener("change", changeSavedReport);
+
+  const options = ["Choose from saved reports"].concat(Object.keys(loadSavedReports()));
+  options.forEach(label => {
+    const option = document.createElement("OPTION");
+    option.textContent = label;
+    savedReportSelect.appendChild(option);
+  });
+}
+
+function loadSavedReports() {
+  const json = localStorage.getItem(localStorageKey);
+  if (json) {
+    return JSON.parse(json);
+  }
+  return {};
+}
+
+function saveReport() {
+  const data = loadSavedReports();
+  const label = prompt("Name your report");
+  data[label] = { configuredFields, joins };
+  localStorage.setItem(localStorageKey, JSON.stringify(data));
+}
+
+function changeSavedReport() {
+  const report = loadSavedReports()[savedReportSelect.value];
+  if (report) {
+    configuredFields = report.configuredFields;
+    joins = report.joins;
+    handleStateChange();
+  } else {
+    console.warn("No report found in localStorage");
+  }
 }
 
 function setupDataSourceSelect() {
